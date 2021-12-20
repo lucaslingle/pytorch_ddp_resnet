@@ -101,8 +101,7 @@ class ResNet(tc.nn.Module):
     def _parse_spec(self, spec: str) -> tc.nn.Sequential:
         ms = list()
         channels = None
-        prev_component = None
-        for component in spec.split(" "):
+        for n, component in enumerate(spec.split()):
             if component.startswith('c'):
                 kspio = extract_ints(component, 5)
                 m = self._make_conv(*kspio)
@@ -112,23 +111,26 @@ class ResNet(tc.nn.Module):
             elif component.startswith('ap'):
                 m = self._make_avgpool(*extract_ints(component, 3))
             elif component.startswith('r'):
-                d = prev_component.startswith('r')
+                d = spec.split()[n-1].startswith('r')
                 i = channels
                 o = channels if not d else 2 * channels
                 l = extract_ints(component, 1)
                 m = self._make_res_stack(d, i, o, l)
                 channels = o
             elif component.startswith('b'):
-                d = prev_component.startswith('b')
+                d = spec.split()[n-1].startswith('b')
                 i = channels
                 o = channels if not d else 2 * channels
                 l = extract_ints(component, 1)
                 m = self._make_bottleneck_res_stack(d, i, o, l)
                 channels = o
             elif component.startswith('n'):
+                i = channels
                 m = self._make_norm(i)
             elif component.startswith('a'):
                 m = self._make_act()
+            else:
+                raise ValueError("Unknown component in architecture spec.")
             ms.append(m)
         return tc.nn.Sequential(*ms)
 
