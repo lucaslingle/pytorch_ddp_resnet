@@ -97,9 +97,7 @@ class ResNet(tc.nn.Module):
         return tc.nn.ReLU()
 
     def _make_fc(self, i, o):
-        return tc.nn.Sequential(
-            tc.nn.Flatten(),
-            tc.nn.Linear(i, o))
+        return tc.nn.Sequential(tc.nn.Flatten(), tc.nn.Linear(i, o))
 
     def _parse_spec(self, spec: str) -> tc.nn.Sequential:
         ms = list()
