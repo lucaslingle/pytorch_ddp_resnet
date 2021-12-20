@@ -153,7 +153,3 @@ class ResNet(tc.nn.Module):
 
     def forward(self, x):
         return self._architecture(x)
-
-
-# example:
-#    resnet34 for imagenet is 'c7,2,1,3,64 n a mp3,2,1 r3 r4 r6 r3 ap7,1,0 f512,1000'
