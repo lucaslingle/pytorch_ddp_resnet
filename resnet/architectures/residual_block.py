@@ -34,7 +34,7 @@ class ResidualBlock(tc.nn.Module):
             out_channels=self._out_channels,
             kernel_size=(3,3),
             stride=(1,1) if not self._downsample else (2,2),
-            padding=(1,1) if not self._downsample else (2,2),
+            padding=(1,1),
             bias=False)
         self._conv2 = tc.nn.Conv2d(
             in_channels=self._out_channels,
@@ -60,13 +60,6 @@ class ResidualBlock(tc.nn.Module):
         self._act1 = tc.nn.ReLU()
         self._act2 = tc.nn.ReLU()
         self._dropout = tc.nn.Dropout(p=self._dropout_prob, inplace=False)
-        self._init_weights()
-
-    def _init_weights(self):
-        tc.nn.init.kaiming_normal_(self._conv1.weights)
-        tc.nn.init.kaiming_normal_(self._conv2.weights)
-        if self._use_proj:
-            tc.nn.init.kaiming_normal_(self.proj.weights)
 
     def forward(self, x):
         i = x

@@ -7,13 +7,15 @@ import re
 
 import torch as tc
 
-from residual_block import ResidualBlock
+from resnet.architectures.residual_block import ResidualBlock
 
 
 def extract_ints(text: str, num: int) -> Tuple[int]:
     pattern = r"(\w+)" + r",".join([r"([0-9]+)" for _ in range(num)])
     m = re.match(pattern, text)
     ints = tuple(map(lambda x: int(x), m.groups()[1:]))
+    if num == 1:
+        ints = ints[0]
     return ints
 
 
@@ -55,6 +57,7 @@ class ResNet(tc.nn.Module):
         self._dropout_prob = dropout_prob
 
         self._architecture = self._parse_spec(architecture_spec)
+        self._init_weights()
 
     def _make_conv(self, k, s, p, i, o):
         return tc.nn.Conv2d(
@@ -65,13 +68,13 @@ class ResNet(tc.nn.Module):
             padding=(p, p))
 
     def _make_avgpool(self, k, s, p):
-        return tc.nn.AvgPoool2d(
+        return tc.nn.AvgPool2d(
             kernel_size=(k, k),
             stride=(s, s),
             padding=(p, p))
 
     def _make_maxpool(self, k, s, p):
-        return tc.nn.MaxPoool2d(
+        return tc.nn.MaxPool2d(
             kernel_size=(k, k),
             stride=(s, s),
             padding=(p, p))
@@ -138,6 +141,11 @@ class ResNet(tc.nn.Module):
                 raise ValueError("Unknown component in architecture spec.")
             ms.append(m)
         return tc.nn.Sequential(*ms)
+
+    def _init_weights(self):
+        for m in self._architecture:
+            if isinstance(m, tc.nn.Conv2d):
+                tc.nn.init.kaiming_normal_(m.weight)
 
     def forward(self, x):
         return self._architecture(x)
