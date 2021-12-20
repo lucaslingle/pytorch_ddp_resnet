@@ -21,7 +21,6 @@ class ResNet(tc.nn.Module):
     def __init__(
             self,
             architecture_spec: str,
-            channels: int,
             preact: bool,
             use_proj: bool,
             dropout_prob: float
@@ -51,7 +50,6 @@ class ResNet(tc.nn.Module):
         """
         super().__init__()
         self._architecture_spec = architecture_spec
-        self._channels = channels
         self._preact = preact
         self._use_proj = use_proj
         self._dropout_prob = dropout_prob
