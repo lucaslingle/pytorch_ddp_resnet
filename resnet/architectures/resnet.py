@@ -98,6 +98,9 @@ class ResNet(tc.nn.Module):
     def _make_act(self):
         return tc.nn.ReLU()
 
+    def _make_fc(self, i, o):
+        return tc.nn.Linear(i, o)
+
     def _parse_spec(self, spec: str) -> tc.nn.Sequential:
         ms = list()
         channels = None
@@ -129,6 +132,8 @@ class ResNet(tc.nn.Module):
                 m = self._make_norm(i)
             elif component.startswith('a'):
                 m = self._make_act()
+            elif component.startswith('f'):
+                m = self._make_fc(*extract_ints(component, 2))
             else:
                 raise ValueError("Unknown component in architecture spec.")
             ms.append(m)
