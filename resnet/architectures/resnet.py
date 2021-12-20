@@ -10,13 +10,13 @@ class ResidualBlock(tc.nn.Module):
             self,
             channels: int,
             downsample: bool,
-            preact: str,
+            preact: bool,
             use_proj: bool
     ):
         """
         :param channels: Number of input channels. 
         :param downsample: Downsample by factor of two?
-        :param preact: A string specifying whether to use preactivation ordering.
+        :param preact: Use preactivation ordering?
         :param use_proj: Use projection on skip connection when downsampling?
         """
         super().__init__()

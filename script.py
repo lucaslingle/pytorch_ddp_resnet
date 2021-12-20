@@ -56,7 +56,7 @@ def setup(rank, config):
 
     device = f'cuda:{rank}' if tc.cuda.is_available() else 'cpu'
     classifier = tc.nn.parallel.DistributedDataParallel(
-        LeNet5().to(device))
+        ResNet().to(device))
     optimizer = tc.optim.Adam(classifier.parameters(), lr=config.get('lr'))
     a = maybe_load_checkpoint(
         checkpoint_dir=config.get('checkpoint_dir'),
