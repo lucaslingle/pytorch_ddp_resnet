@@ -119,7 +119,7 @@ class ResNet(tc.nn.Module):
                 m = self._make_res_stack(d, i, o, l)
                 channels = o
             elif component.startswith('b'):
-                d = prev_component.startswith('r')
+                d = prev_component.startswith('b')
                 i = channels
                 o = channels if not d else 2 * channels
                 l = extract_ints(component, 1)
