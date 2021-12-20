@@ -35,11 +35,11 @@ class ResNet(tc.nn.Module):
                 {"cK,S,P", "mpK,S,P", "apK,S,P", "rD", "bD", "n", "a", "fI,O}.
             c stands for convolution,
             mp for max pooling,
-            ap for average pooling.
+            ap for average pooling,
             r for residual block,
             b for bottleneck residual block,
             n for batch normalization,
-            a for activation.
+            a for activation,
             f for fully-connected.
             K,S,P stand for kernel size, stride, padding and should be integers.
             D stands for depth: the number of applications of the given block type.
