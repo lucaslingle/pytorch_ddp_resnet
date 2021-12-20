@@ -32,7 +32,7 @@ class ResNet(tc.nn.Module):
 
         :param architecture_spec: A string containing a space-separated list of
             architectural components chosen from
-                {"cK,S,P,I,O", "mpK,S,P", "apK,S,P", "rD", "bD", "n", "a", "fI,O}.
+                {"cK,S,P,I,O", "mpK,S,P", "apK,S,P", "rD", "bD", "n", "a", "fI,O"}.
             c stands for convolution,
             mp for max pooling,
             ap for average pooling,
