@@ -11,7 +11,7 @@ from resnet.architectures.residual_block import ResidualBlock
 
 
 def extract_ints(text: str, num: int) -> Tuple[int]:
-    pattern = r"(\w+)" + r",".join([r"([0-9]+)" for _ in range(num)])
+    pattern = r"([a-z]+)" + r",".join([r"([0-9]+)" for _ in range(num)])
     m = re.match(pattern, text)
     ints = tuple(map(lambda x: int(x), m.groups()[1:]))
     if num == 1:
@@ -49,6 +49,10 @@ class ResNet(tc.nn.Module):
         :param preact: Use preactivation ordering?
         :param use_proj: Use projection on skip connection when downsampling?
         :param dropout_prob: Dropout probability.
+
+        :example:
+        resnet34 for imagenet has architecture_spec
+            'c7,2,1,3,64 n a mp3,2,1 r3 r4 r6 r3 ap7,1,0 f512,1000'
         """
         super().__init__()
         self._architecture_spec = architecture_spec
@@ -149,3 +153,7 @@ class ResNet(tc.nn.Module):
 
     def forward(self, x):
         return self._architecture(x)
+
+
+# example:
+#    resnet34 for imagenet is 'c7,2,1,3,64 n a mp3,2,1 r3 r4 r6 r3 ap7,1,0 f512,1000'
