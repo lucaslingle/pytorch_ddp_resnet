@@ -5,7 +5,7 @@ import os
 
 import torch as tc
 
-from resnet.architectures.resnet import ResNet
+from resnet.architectures.residual_block import ResNet
 from resnet.algos.training import training_loop
 from resnet.algos.evaluation import evaluation_loop
 
