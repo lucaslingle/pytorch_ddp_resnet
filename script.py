@@ -27,10 +27,9 @@ def create_argparser():
 
 
 def get_config(args):
-    base_path = os.path.join(args.models_dir, args.run_name)
-    config_path = os.path.join(base_path, 'config.ini')
-    checkpoint_dir = os.path.join(base_path, 'checkpoints')
-    log_dir = os.path.join(base_path, 'tensorboard_logs')
+    config_path = os.path.join(args.models_dir, args.run_name, 'config.ini')
+    checkpoint_dir = os.path.join(args.models_dir, args.run_name, 'checkpoints')
+    log_dir = os.path.join(args.models_dir, args.run_name, 'tensorboard_logs')
 
     config = configparser.ConfigParser(
         defaults={
