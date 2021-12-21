@@ -11,7 +11,7 @@ from resnet.algos.evaluation import evaluation_loop
 
 from resnet.utils.config_util import ConfigParser
 from resnet.utils.data_util import get_dataloaders
-from resnet.utils.lr_util import get_scheduler
+from resnet.utils.optim_util import get_optimizer, get_scheduler
 from resnet.utils.checkpoint_util import maybe_load_checkpoints
 
 
@@ -67,16 +67,13 @@ def setup(rank, config):
             dropout_prob=config.get('dropout_prob')
         ).to(device)
     )
-    optimizer = tc.optim.SGD(
-        classifier.parameters(),
-        lr=config.get('lr'),
-        momentum=config.get('momentum'),
-        dampening=config.get('dampening'),
-        nesterov=config.get('nesterov'),
-        weight_decay=config.get('weight_decay'))
+    optimizer = get_optimizer(
+        model=classifier,
+        optimizer_cls_name=config.get('optimizer_cls_name'),
+        optimizer_args=config.get('optimizer_args'))
     scheduler = get_scheduler(
-        scheduler_cls_name=config.get('scheduler_cls_name'),
         optimizer=optimizer,
+        scheduler_cls_name=config.get('scheduler_cls_name'),
         scheduler_args=config.get('scheduler_args'))
 
     global_step = maybe_load_checkpoints(

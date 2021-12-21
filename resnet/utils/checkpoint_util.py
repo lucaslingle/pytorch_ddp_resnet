@@ -2,16 +2,13 @@
 Checkpoint util.
 """
 
-from typing import Union, Optional, Dict
+from typing import Optional, Dict
 import os
 import re
 
 import torch as tc
 
-Module = tc.nn.Module
-Optimizer = tc.optim.Optimizer
-Scheduler = tc.optim.lr_scheduler._LRScheduler
-Checkpointable = Union[Module, Optimizer, Scheduler]
+from resnet.utils.types_util import Checkpointable
 
 
 def _format_name(kind, steps, suffix):
