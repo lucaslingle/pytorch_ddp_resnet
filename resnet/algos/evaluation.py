@@ -22,7 +22,7 @@ def evaluation_loop(
         metrics = compute_losses_and_metrics(logits=logits, labels=y)
 
         for name in metrics:
-            summed_metrics[name] += metrics.get('name').item()
+            summed_metrics[name] += metrics.get(name).item()
         num_batch += 1
 
     return {
