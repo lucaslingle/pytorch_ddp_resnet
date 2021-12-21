@@ -1,9 +1,9 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Tuple, Any
 
 import yaml
 
 
-class ConfigParser:
+class ConfigParser(dict):
     def __init__(self, defaults: Optional[Dict[str, Any]]) -> None:
         super().__init__()
         self._defaults = defaults if defaults else dict()
@@ -23,3 +23,6 @@ class ConfigParser:
 
     def get(self, item: str) -> Any:
         return self._config[item]
+
+    def items(self) -> Tuple[str, Any]:
+        return self._config.items()

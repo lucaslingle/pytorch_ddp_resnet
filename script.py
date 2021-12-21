@@ -11,6 +11,7 @@ from resnet.algos.evaluation import evaluation_loop
 
 from resnet.utils.config_util import ConfigParser
 from resnet.utils.data_util import get_dataloaders
+from resnet.utils.lr_util import get_scheduler
 from resnet.utils.checkpoint_util import maybe_load_checkpoint
 
 
@@ -73,7 +74,10 @@ def setup(rank, config):
         dampening=config.get('dampening'),
         nesterov=config.get('nesterov'),
         weight_decay=config.get('weight_decay'))
-    # scheduler = ... # TODO(lucaslingle): see todo in scheduler util.
+    scheduler = get_scheduler(
+        scheduler_cls_name=config.get('scheduler_cls_name'),
+        optimizer=optimizer,
+        scheduler_args=config.get('scheduler_args'))
 
     a = maybe_load_checkpoint(
         checkpoint_dir=config.get('checkpoint_dir'),
@@ -95,6 +99,7 @@ def setup(rank, config):
         "dl_test": dl_test,
         "classifier": classifier,
         "optimizer": optimizer,
+        "scheduler": scheduler,
         "global_step": a
     }
 
