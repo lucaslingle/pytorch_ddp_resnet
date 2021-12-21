@@ -108,8 +108,8 @@ def maybe_load_checkpoints(
                 checkpointable=checkpointable,
                 steps=steps)
             global_steps.append(step_)
-    if steps is None and len(set(global_steps)) != 1:
-        msg = "Latest checkpoint steps not aligned."
+    if len(set(global_steps)) != 1:
+        msg = "Checkpoint steps not aligned."
         raise RuntimeError(msg)
 
 
