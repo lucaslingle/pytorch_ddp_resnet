@@ -2,7 +2,7 @@
 Training loop.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 import inspect
 
 import torch as tc
@@ -14,8 +14,12 @@ from resnet.utils.checkpoint_util import save_checkpoints
 from resnet.utils.types_util import Module, Optimizer, Scheduler, Dataloader
 
 
-def step_scheduler(scheduler, loss):
-    if 'metrics' in inspect.signature(scheduler.step):
+def requires_loss(scheduler: Scheduler) -> bool:
+    return 'metrics' in inspect.signature(scheduler.step)
+
+
+def step_scheduler(scheduler: Scheduler, loss: Union[tc.Tensor, float]) -> None:
+    if requires_loss(scheduler):
         scheduler.step(loss)
     else:
         scheduler.step()
@@ -47,8 +51,8 @@ def training_loop(
     :param optimizer: Optimizer.
     :param scheduler: Optional learning rate scheduler.
     :param scheduler_step_unit: One of 'batch', 'epoch', 'none'.
-    :param dl_train: Training dataloader.
-    :param dl_test: Test/val dataloader.
+    :param dl_train: Training dataloader with shards over world_size devices.
+    :param dl_test: Test/val dataloader with shards over world_size devices.
     :param device: Device name.
     :param global_step: Global step to start from.
     :param max_steps: Maximum number of steps.
@@ -80,14 +84,13 @@ def training_loop(
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            if scheduler_step_unit == 'batch':
-                step_scheduler(scheduler, loss)
-
-            # todo(lucaslingle): sort out maybe scheduler step
-            #    issues include step freq (batch vs epoch)
-            #    and passed args (loss required for ReduceLROnPlateau, for example).
 
             global_metrics = {k: global_mean(v) for k,v in metrics.items()}
+            global_loss = global_metrics.get('loss').item()
+
+            if scheduler_step_unit == 'batch':
+                step_scheduler(scheduler, global_loss)
+
             if rank == 0:
                 for name in global_metrics:
                     writer.add_scalar(
@@ -97,7 +100,6 @@ def training_loop(
 
                 if global_step % 100 == 0:
                     # todo(lucaslingle): add support for sophisticated checkpointing strategies.
-                    global_loss = global_metrics.get('loss').item()
                     print(f"global step: {global_step}... loss: {global_loss}")
                     save_checkpoints(
                         checkpoint_dir=checkpoint_dir,
@@ -114,9 +116,9 @@ def training_loop(
                 break
 
         if scheduler_step_unit == 'epoch':
-            # todo(lucaslingle): sort out logic for communicating global loss on validation set, especially as it may be sharded over multiple processes.
-            # when done, add comment explaining why you're doing what you're doing
-            val_metrics = evaluation_loop(classifier, dl_test, device)
+            # during training, the validation set is sharded over multiple gpus,
+            # so compute global loss before stepping.
+            val_metrics = evaluation_loop(rank, classifier, dl_test, device)
             val_loss = val_metrics.get('loss')
-            val_loss_global = global_mean(val_loss)
+            val_loss_global = global_mean(val_loss).item()
             step_scheduler(scheduler, val_loss_global)

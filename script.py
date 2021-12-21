@@ -10,7 +10,7 @@ from resnet.algos.training import training_loop
 from resnet.algos.evaluation import evaluation_loop
 
 from resnet.utils.config_util import ConfigParser
-from resnet.utils.data_util import get_dataloaders
+from resnet.utils.data_util import ShardSpec, get_dataloaders
 from resnet.utils.optim_util import get_optimizer, get_scheduler
 from resnet.utils.checkpoint_util import maybe_load_checkpoints
 
@@ -35,13 +35,26 @@ def get_config(args):
 
     config = ConfigParser(
         defaults={
+            'mode': args.mode,
+            'data_dir': args.data_dir,
             'checkpoint_dir': checkpoint_dir,
-            'log_dir': log_dir,
-            'data_dir': args.data_dir
+            'log_dir': log_dir
         }
     )
     config.read(config_path, verbose=True)
     return config
+
+
+def get_shard_spec(mode, batch_size, world_size):
+    if mode == 'train':
+        num_shards = world_size
+    else:
+        num_shards = 1
+    local_batch_size = batch_size // num_shards
+    return {
+        "num_shards": num_shards,
+        "local_batch_size": local_batch_size
+    }
 
 
 def setup(rank, config):
@@ -52,11 +65,17 @@ def setup(rank, config):
         world_size=config.get('world_size'),
         rank=rank)
 
+    shard_spec = get_shard_spec(
+        mode=config.get('mode'),
+        batch_size=config.get('batch_size'),
+        world_size=config.get('world_size')
+    )
     dl_train, dl_test = get_dataloaders(
         data_dir=config.get('data_dir'),
         dataset_name=config.get('dataset_name'),
         data_aug=config.get('data_aug'),
-        batch_size=config.get('batch_size') // config.get('world_size'))
+        local_batch_size=shard_spec.get('local_batch_size'),
+        num_shards=shard_spec.get('num_shards'))
 
     device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
     classifier = tc.nn.parallel.DistributedDataParallel(
@@ -127,6 +146,6 @@ if __name__ == '__main__':
     else:
         tc.multiprocessing.spawn(
             evaluate,
-            args=(config,),
-            nprocs=config.get('world_size'),
+            args=config.get('world_size'),
+            nprocs=1,
             join=True)

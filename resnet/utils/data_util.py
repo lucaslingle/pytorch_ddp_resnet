@@ -2,6 +2,7 @@
 Data util.
 """
 
+from typing import Dict, Union
 import os
 
 import torch as tc
@@ -17,7 +18,13 @@ from filelock import FileLock
 # crop_size: some int (assumes a square crop)
 
 
-def get_dataloaders(data_dir, dataset_name, data_aug, batch_size):
+def get_dataloaders(
+        data_dir: str,
+        dataset_name: str,
+        data_aug: Dict[str, Union[int, str]],
+        local_batch_size: int,
+        num_shards: int
+):
     os.makedirs(data_dir, exist_ok=True)
     lock_fp = os.path.join(data_dir, f"{dataset_name}.lock")
     with FileLock(lock_fp):
@@ -36,8 +43,12 @@ def get_dataloaders(data_dir, dataset_name, data_aug, batch_size):
         raise NotImplementedError("Gotta implement data aug later!")
 
     dataloader_train = tc.utils.data.DataLoader(
-        dataset_train, batch_size=batch_size, shuffle=True)
+        dataset=dataset_train,
+        batch_size=local_batch_size,
+        shuffle=True)
     dataloader_test = tc.utils.data.DataLoader(
-        dataset_test, batch_size=batch_size, shuffle=False)
+        dataset=dataset_test,
+        batch_size=local_batch_size,
+        shuffle=False)
 
     return dataloader_train, dataloader_test
