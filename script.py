@@ -44,6 +44,28 @@ def get_config(args):
     return config
 
 
+def maybe_load_checkpoints(checkpoint_dir, classifier, optimizer, scheduler):
+    a = maybe_load_checkpoint(
+        checkpoint_dir=checkpoint_dir,
+        kind_name='classifier',
+        checkpointable=classifier,
+        steps=None)
+    b = maybe_load_checkpoint(
+        checkpoint_dir=checkpoint_dir,
+        kind_name='optimizer',
+        checkpointable=optimizer,
+        steps=None)
+    c = maybe_load_checkpoint(
+        checkpoint_dir=checkpoint_dir,
+        kind_name='scheduler',
+        checkpointable=scheduler,
+        steps=None)
+    if a != b or (c is not None and b != c):
+        msg = "Latest checkpoint steps not aligned."
+        raise RuntimeError(msg)
+    return a
+
+
 def setup(rank, config):
     os.environ['MASTER_ADDR'] = config.get('master_addr')
     os.environ['MASTER_PORT'] = config.get('master_port')
@@ -79,24 +101,11 @@ def setup(rank, config):
         optimizer=optimizer,
         scheduler_args=config.get('scheduler_args'))
 
-    a = maybe_load_checkpoint(
+    global_step = maybe_load_checkpoints(
         checkpoint_dir=config.get('checkpoint_dir'),
-        kind_name='classifier',
-        checkpointable=classifier,
-        steps=None)
-    b = maybe_load_checkpoint(
-        checkpoint_dir=config.get('checkpoint_dir'),
-        kind_name='optimizer',
-        checkpointable=optimizer,
-        steps=None)
-    c = maybe_load_checkpoint(
-        checkpoint_dir=config.get('checkpoint_dir'),
-        kind_name='scheduler',
-        checkpointable=scheduler,
-        steps=None)
-    if a != b or (c is not None and b != c):
-        msg = "Latest checkpoint steps not aligned."
-        raise RuntimeError(msg)
+        classifier=classifier,
+        optimizer=optimizer,
+        scheduler=scheduler)
 
     return {
         "device": device,
