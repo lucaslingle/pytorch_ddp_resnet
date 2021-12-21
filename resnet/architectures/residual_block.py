@@ -157,7 +157,7 @@ class BottleneckResidualBlock(tc.nn.Module):
         self._norm2 = tc.nn.BatchNorm2d(
             num_features=self._bottleneck_channels)
         self._norm3 = tc.nn.BatchNorm2d(
-            num_features=self._out_channels)
+            num_features=self._bottleneck_channels if self._preact else self._out_channels)
         self._act1 = tc.nn.ReLU()
         self._act2 = tc.nn.ReLU()
         self._act3 = tc.nn.ReLU()
