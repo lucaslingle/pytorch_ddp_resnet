@@ -93,9 +93,9 @@ def maybe_load_checkpoints(
         steps: Optional[int]
 ) -> int:
     """
-    :param checkpoint_dir: checkpoint dir.
-    :param checkpointables: dictionary of checkpointables keyed by kind name.
-    :param steps: number of steps so far.
+    :param checkpoint_dir: Checkpoint dir.
+    :param checkpointables: Dictionary of checkpointables keyed by kind name.
+    :param steps: Number of steps so far. If none, uses latest.
     :return: Number of steps in latest checkpoint. If no checkpoints, returns 0.
     """
     global_steps = list()
@@ -120,10 +120,10 @@ def save_checkpoints(
         steps: int
 ) -> None:
     """
-    :param checkpoint_dir: checkpoint dir.
-    :param checkpointables: dictionary of checkpointables keyed by kind name.
-    :param rank: process rank.
-    :param steps: number of steps so far.
+    :param checkpoint_dir: Checkpoint dir.
+    :param checkpointables: Dictionary of checkpointables keyed by kind name.
+    :param rank: Process rank.
+    :param steps: Number of steps so far.
     :return: None
     """
     for kind_name in checkpointables:
