@@ -45,6 +45,9 @@ def training_loop(
             optimizer.zero_grad()
             metrics.get('loss').backward()
             optimizer.step()
+            # todo(lucaslingle): sort out maybe scheduler step
+            #    issues include step freq (batch vs epoch)
+            #    and passed args (loss required for ReduceLROnPlateau, for example).
 
             global_metrics = {k: global_mean(v) for k,v in metrics.items()}
             if rank == 0:
