@@ -5,7 +5,8 @@ import yaml
 
 class ConfigParser:
     def __init__(self, defaults: Optional[Dict[str, Any]]) -> None:
-        self._defaults = defaults
+        super().__init__()
+        self._defaults = defaults if defaults is not None else dict()
         self._config = None
 
     def read(self, config_path, verbose=False) -> None:
@@ -18,4 +19,7 @@ class ConfigParser:
                 print(f"{k}: {self._config[k]}")
 
     def __getitem__(self, item: str) -> Any:
+        return self._config[item]
+
+    def get(self, item: str) -> Any:
         return self._config[item]
