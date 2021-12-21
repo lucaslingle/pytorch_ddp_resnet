@@ -17,7 +17,12 @@ def requires_loss(scheduler: Scheduler) -> bool:
     return isinstance(scheduler, tc.optim.lr_scheduler.ReduceLROnPlateau)
 
 
-def step_scheduler(scheduler: Scheduler, loss: Union[tc.Tensor, float]) -> None:
+def step_scheduler(
+        scheduler: Optional[Scheduler],
+        loss: Union[tc.Tensor, float]
+) -> None:
+    if scheduler is None:
+        return
     if requires_loss(scheduler):
         scheduler.step(loss)
     else:
