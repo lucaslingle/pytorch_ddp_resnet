@@ -61,23 +61,28 @@ class ResidualBlock(tc.nn.Module):
             num_features=self._out_channels)
         self._act1 = tc.nn.ReLU()
         self._act2 = tc.nn.ReLU()
-        self._dropout = tc.nn.Dropout(p=self._dropout_prob, inplace=False)
+        self._dropout1 = tc.nn.Dropout(p=self._dropout_prob, inplace=False)
+        self._dropout2 = tc.nn.Dropout(p=self._dropout_prob, inplace=False)
 
     def forward(self, x):
         i = x
         if self._preact:
             x = self._norm1(x)
             x = self._act1(x)
+            x = self._dropout1(x)
             x = self._conv1(x)
-            x = self._dropout(x)
+
             x = self._norm2(x)
             x = self._act2(x)
+            x = self._dropout2(x)
             x = self._conv2(x)
         else:
+            x = self._dropout1(x)
             x = self._conv1(x)
-            x = self._dropout(x)
             x = self._norm1(x)
             x = self._act1(x)
+
+            x = self._dropout2(x)
             x = self._conv2(x)
             x = self._norm2(x)
 
@@ -163,34 +168,37 @@ class BottleneckResidualBlock(tc.nn.Module):
         self._act3 = tc.nn.ReLU()
         self._dropout1 = tc.nn.Dropout(p=self._dropout_prob, inplace=False)
         self._dropout2 = tc.nn.Dropout(p=self._dropout_prob, inplace=False)
+        self._dropout3 = tc.nn.Dropout(p=self._dropout_prob, inplace=False)
 
     def forward(self, x):
         i = x
         if self._preact:
             x = self._norm1(x)
             x = self._act1(x)
-            x = self._conv1(x)
             x = self._dropout1(x)
+            x = self._conv1(x)
 
             x = self._norm2(x)
             x = self._act2(x)
-            x = self._conv2(x)
             x = self._dropout2(x)
+            x = self._conv2(x)
 
             x = self._norm3(x)
             x = self._act3(x)
+            x = self._dropout3(x)
             x = self._conv3(x)
         else:
-            x = self._conv1(x)
             x = self._dropout1(x)
+            x = self._conv1(x)
             x = self._norm1(x)
             x = self._act1(x)
 
-            x = self._conv2(x)
             x = self._dropout2(x)
+            x = self._conv2(x)
             x = self._norm2(x)
             x = self._act2(x)
 
+            x = self._dropout3(x)
             x = self._conv3(x)
             x = self._norm3(x)
 
