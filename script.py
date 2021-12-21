@@ -69,7 +69,7 @@ def setup(rank, config):
     )
     optimizer = tc.optim.SGD(
         classifier.parameters(),
-        lr=config.get('lr'),
+        lr=config.getfloat('lr'),
         momentum=config.getfloat('momentum'),
         dampening=config.getfloat('dampening'),
         nesterov=config.getboolean('nesterov'),
