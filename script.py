@@ -3,7 +3,6 @@
 import argparse
 import os
 import configparser
-import sys
 
 import torch as tc
 
@@ -27,39 +26,52 @@ def create_argparser():
     return parser
 
 
-def persistence_spec(models_dir, run_name):
-    config_path = os.path.join(models_dir, run_name, 'config.ini')
-    checkpoint_dir = os.path.join(models_dir, run_name, 'checkpoints')
-    log_dir = os.path.join(models_dir, run_name, 'tensorboard_logs')
-    return {
-        "config_path": config_path,
-        "checkpoint_dir": checkpoint_dir,
-        "log_dir": log_dir
-    }
+def get_config(args):
+    base_path = os.path.join(args.models_dir, args.run_name)
+    config_path = os.path.join(base_path, 'config.ini')
+    checkpoint_dir = os.path.join(base_path, 'checkpoints')
+    log_dir = os.path.join(base_path, 'tensorboard_logs')
+
+    config = configparser.ConfigParser(
+        defaults={
+            'checkpoint_dir': checkpoint_dir,
+            'log_dir': log_dir,
+            'data_dir': args.data_dir
+        }
+    )
+    config.read(config_path)
+    return config['DEFAULT']
 
 
 def setup(rank, config):
     os.environ['MASTER_ADDR'] = config.get('master_addr')
-    os.environ['MASTER_PORT'] = str(config.get('master_port'))
+    os.environ['MASTER_PORT'] = config.get('master_port')
     tc.distributed.init_process_group(
         backend=config.get('backend'),
-        world_size=int(config.get('world_size')),
+        world_size=config.getint('world_size'),
         rank=rank)
 
     dl_train, dl_test = get_dataloaders(
         data_dir=config.get('data_dir'),
-        batch_size=int(config.get('batch_size')))  # todo: make sure this is local batch size in configs
+        batch_size=config.getint('batch_size') // config.getint('world_size'))
 
-    device = f'cuda:{rank}' if tc.cuda.is_available() else 'cpu'
+    device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
     classifier = tc.nn.parallel.DistributedDataParallel(
-        ResNet().to(device))
+        ResNet(
+            architecture_spec=config.get('architecture_spec'),
+            preact=config.getbool('preact'),
+            use_proj=config.getbool('use_proj'),
+            dropout_prob=config.getfloat('dropout_prob')
+        ).to(device)
+    )
     optimizer = tc.optim.SGD(
         classifier.parameters(),
-        lr=float(config.get('lr')),
-        momentum=float(config.get('momentum')),
-        dampening=float(config.get('dampening')),
+        lr=config.getfloat('lr'),
+        momentum=config.getfloat('momentum'),
+        dampening=config.getfloat('dampening'),
         nesterov=config.getbool('nesterov'),
-        weight_decay=float(config.get('weight_decay')))
+        weight_decay=config.getfloat('weight_decay'))
+
     a = maybe_load_checkpoint(
         checkpoint_dir=config.get('checkpoint_dir'),
         kind_name='classifier',
@@ -105,12 +117,7 @@ def evaluate(rank, config):
 
 if __name__ == '__main__':
     args = create_argparser().parse_args()
-    persist_spec = persistence_spec(args.models_dir, args.run_name)
-
-    config = configparser.ConfigParser()
-    config.read(persist_spec.get('config_path'))
-    config.read_dict({'DEFAULT': persist_spec})
-    config = config['DEFAULT']
+    config = get_config(args)
 
     for key in config:
         print(f"{key}: {config[key]}")
