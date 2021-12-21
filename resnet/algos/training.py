@@ -13,8 +13,12 @@ from resnet.utils.checkpoint_util import save_checkpoints
 from resnet.utils.types_util import Module, Optimizer, Scheduler, Dataloader
 
 
+def requires_loss(scheduler: Scheduler) -> bool:
+    return isinstance(scheduler, tc.optim.lr_scheduler.ReduceLROnPlateau)
+
+
 def step_scheduler(scheduler: Scheduler, loss: Union[tc.Tensor, float]) -> None:
-    if isinstance(scheduler, tc.optim.lr_scheduler.ReduceLROnPlateau):
+    if requires_loss(scheduler):
         scheduler.step(loss)
     else:
         scheduler.step()
