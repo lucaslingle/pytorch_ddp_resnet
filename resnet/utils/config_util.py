@@ -9,7 +9,7 @@ class ConfigParser:
         self._defaults = defaults if defaults is not None else dict()
         self._config = None
 
-    def read(self, config_path, verbose=False) -> None:
+    def read(self, config_path: str, verbose: bool = False) -> None:
         config = self._defaults
         with open(config_path, 'rb') as f:
             config.update(yaml.safe_load(f))
