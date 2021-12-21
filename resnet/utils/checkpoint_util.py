@@ -95,7 +95,7 @@ def maybe_load_checkpoints(
     """
     :param checkpoint_dir: Checkpoint dir.
     :param checkpointables: Dictionary of checkpointables keyed by kind name.
-    :param steps: Number of steps so far. If none, uses latest.
+    :param steps: Number of steps so far. If None, uses latest.
     :return: Number of steps in latest checkpoint. If no checkpoints, returns 0.
     """
     global_steps = list()
@@ -108,7 +108,7 @@ def maybe_load_checkpoints(
                 checkpointable=checkpointable,
                 steps=steps)
             global_steps.append(step_)
-    if len(set(global_steps)) != 1:
+    if steps is None and len(set(global_steps)) != 1:
         msg = "Latest checkpoint steps not aligned."
         raise RuntimeError(msg)
 
