@@ -14,6 +14,7 @@ def training_loop(
         world_size,
         classifier,
         optimizer,
+        scheduler,
         dl_train,
         dl_test,
         device,
@@ -68,6 +69,13 @@ def training_loop(
                         checkpointable=optimizer,
                         rank=rank,
                         steps=global_step+1)
+                    if scheduler:
+                        save_checkpoint(
+                            checkpoint_dir=checkpoint_dir,
+                            kind_name='scheduler',
+                            checkpointable=scheduler,
+                            rank=rank,
+                            steps=global_step+1)
 
             global_step += 1
             if done():

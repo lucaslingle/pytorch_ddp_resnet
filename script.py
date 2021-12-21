@@ -89,8 +89,13 @@ def setup(rank, config):
         kind_name='optimizer',
         checkpointable=optimizer,
         steps=None)
-    if a != b:
-        msg = "Latest classifier and optimizer checkpoint steps not aligned."
+    c = maybe_load_checkpoint(
+        checkpoint_dir=config.get('checkpoint_dir'),
+        kind_name='scheduler',
+        checkpointable=scheduler,
+        steps=None)
+    if a != b or (c is not None or b != c):
+        msg = "Latest checkpoint steps not aligned."
         raise RuntimeError(msg)
 
     return {
