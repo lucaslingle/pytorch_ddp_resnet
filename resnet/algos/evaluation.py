@@ -2,6 +2,8 @@
 Evaluation loop.
 """
 
+from collections import Counter
+
 import torch as tc
 
 from resnet.algos.metrics import compute_losses_and_metrics
@@ -14,7 +16,7 @@ def evaluation_loop(
         device
 ):
     classifier.eval()
-    summed_metrics = dict()
+    summed_metrics = Counter()
     num_batch = 0
     for x, y in dl_test:
         x, y = x.to(device), y.to(device)
