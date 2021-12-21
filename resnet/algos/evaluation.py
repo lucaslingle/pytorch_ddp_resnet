@@ -9,8 +9,7 @@ import torch as tc
 def evaluation_loop(
         classifier,
         dl_test,
-        device,
-        **kwargs
+        device
 ):
     classifier.eval()
     summed_loss = 0.

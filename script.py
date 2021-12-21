@@ -3,6 +3,7 @@
 import argparse
 import os
 import configparser
+import re
 
 import torch as tc
 
@@ -40,38 +41,64 @@ def get_config(args):
         }
     )
     config.read(config_path)
-    return config['DEFAULT']
+    return type_inference(config['DEFAULT'])
+
+
+def type_inference(config):
+    config_dict = {}
+
+    def is_bool(v):
+        return v in ['True', 'False']
+
+    def is_int(v):
+        m = re.match(r"([0-9]+)", v)
+        return m is not None and m.group(1) == v
+
+    def is_float(v):
+        m = re.match(r"([0-9]+).([0-9]+)", v)
+        return m is not None and ".".join([m.group(1), m.group(2)]) == v
+
+    for k in config:
+        v = config[k]
+        if is_bool(v):
+            v = (v == 'True')
+        elif is_int(v):
+            v = int(v)
+        elif is_float(v):
+            v = float(v)
+        config_dict[k] = v
+    return config_dict
 
 
 def setup(rank, config):
     os.environ['MASTER_ADDR'] = config.get('master_addr')
-    os.environ['MASTER_PORT'] = config.get('master_port')
+    os.environ['MASTER_PORT'] = str(config.get('master_port'))
     tc.distributed.init_process_group(
         backend=config.get('backend'),
-        world_size=config.getint('world_size'),
+        world_size=config.get('world_size'),
         rank=rank)
 
     # TODO(lucaslingle): add support for dataset_name, data_aug params.
     dl_train, dl_test = get_dataloaders(
         data_dir=config.get('data_dir'),
-        batch_size=config.getint('batch_size') // config.getint('world_size'))
+        batch_size=config.get('batch_size') // config.get('world_size'))
 
     device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet(
             architecture_spec=config.get('architecture_spec'),
-            preact=config.getbool('preact'),
-            use_proj=config.getbool('use_proj'),
-            dropout_prob=config.getfloat('dropout_prob')
+            preact=config.get('preact'),
+            use_proj=config.get('use_proj'),
+            dropout_prob=config.get('dropout_prob')
         ).to(device)
     )
     optimizer = tc.optim.SGD(
         classifier.parameters(),
-        lr=config.getfloat('lr'),
-        momentum=config.getfloat('momentum'),
-        dampening=config.getfloat('dampening'),
-        nesterov=config.getbool('nesterov'),
-        weight_decay=config.getfloat('weight_decay'))
+        lr=config.get('lr'),
+        momentum=config.get('momentum'),
+        dampening=config.get('dampening'),
+        nesterov=config.get('nesterov'),
+        weight_decay=config.get('weight_decay'))
 
     a = maybe_load_checkpoint(
         checkpoint_dir=config.get('checkpoint_dir'),
@@ -126,11 +153,11 @@ if __name__ == '__main__':
         tc.multiprocessing.spawn(
             train,
             args=(config,),
-            nprocs=config.getint('world_size'),
+            nprocs=config.get('world_size'),
             join=True)
     else:
         tc.multiprocessing.spawn(
             evaluate,
             args=(config,),
-            nprocs=config.getint('world_size'),
+            nprocs=config.get('world_size'),
             join=True)
