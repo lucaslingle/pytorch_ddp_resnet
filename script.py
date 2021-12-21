@@ -73,6 +73,7 @@ def setup(rank, config):
         dampening=config.get('dampening'),
         nesterov=config.get('nesterov'),
         weight_decay=config.get('weight_decay'))
+    # scheduler = ... # TODO(lucaslingle): see todo in scheduler util.
 
     a = maybe_load_checkpoint(
         checkpoint_dir=config.get('checkpoint_dir'),

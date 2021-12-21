@@ -7,7 +7,10 @@ import re
 
 import torch as tc
 
-from resnet.architectures.residual_block import ResidualBlock
+from resnet.architectures.residual_block import (
+    ResidualBlock,
+    BottleneckResidualBlock,
+)
 
 
 def extract_ints(text: str, num: int) -> Tuple[int]:
@@ -95,7 +98,15 @@ class ResNet(tc.nn.Module):
         ])
 
     def _make_bottleneck_res_stack(self, d, i, o, l):
-        raise NotImplementedError
+        return tc.nn.Sequential(*[
+            BottleneckResidualBlock(
+                channels=i if ell == 0 else o,
+                downsample=d if ell == 0 else False,
+                preact=self._preact,
+                use_proj=self._use_proj,
+                dropout_prob=self._dropout_prob)
+            for ell in range(l)
+        ])
 
     def _make_norm(self, i):
         return tc.nn.BatchNorm2d(num_features=i)

@@ -21,6 +21,9 @@ def get_dataloaders(data_dir, dataset_name, data_aug, batch_size):
             root=data_dir, train=False, download=True,
             transform=tv.transforms.ToTensor())
 
+    # TODO(lucaslingle):
+    #    shard the data over multiple gpus, and add support for data aug
+
     if data_aug is not None:
         raise NotImplementedError("Gotta implement data aug later!")
 
