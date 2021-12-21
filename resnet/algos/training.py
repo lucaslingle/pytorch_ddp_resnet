@@ -113,7 +113,7 @@ def training_loop(
             if done():
                 break
 
-        val_metrics = evaluation_loop(rank, classifier, dl_test, device)
+        val_metrics = evaluation_loop(classifier, dl_test, device)
         val_metrics_global = global_means(val_metrics)
         epoch = (global_step // len(dl_train))
 
