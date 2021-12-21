@@ -111,6 +111,7 @@ def maybe_load_checkpoints(
     if len(set(global_steps)) != 1:
         msg = "Checkpoint steps not aligned."
         raise RuntimeError(msg)
+    return step_
 
 
 def save_checkpoints(
