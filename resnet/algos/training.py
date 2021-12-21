@@ -19,7 +19,8 @@ def training_loop(
         global_step,
         max_steps,
         checkpoint_dir,
-        log_dir
+        log_dir,
+        **kwargs
 ):
     if rank == 0:
         writer = SummaryWriter(log_dir)

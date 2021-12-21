@@ -111,9 +111,7 @@ def evaluate(rank, config):
     learning_system = setup(rank, config)
     if rank == 0:
         metrics = evaluation_loop(
-            device=learning_system.get('device'),
-            classifier=learning_system.get('classifier'),
-            dataloader=learning_system.get('dl_test'))
+            **config, **learning_system, **persist_spec)
         print(f"Test loss: {metrics['loss']}... Test accuracy: {metrics['acc']}")
     cleanup()
 

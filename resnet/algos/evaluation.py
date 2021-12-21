@@ -8,14 +8,15 @@ import torch as tc
 @tc.no_grad()
 def evaluation_loop(
         classifier,
-        dataloader,
-        device
+        dl_test,
+        device,
+        **kwargs
 ):
     classifier.eval()
     summed_loss = 0.
     summed_acc = 0.
     num_batch = 0
-    for x, y in dataloader:
+    for x, y in dl_test:
         x = x.to(device)
         y = y.to(device)
 
