@@ -2,7 +2,6 @@
 
 import argparse
 import os
-import configparser
 
 import torch as tc
 
@@ -10,6 +9,7 @@ from resnet.architectures.resnet import ResNet
 from resnet.algos.training import training_loop
 from resnet.algos.evaluation import evaluation_loop
 
+from resnet.utils.config_util import ConfigParser
 from resnet.utils.data_util import get_dataloaders
 from resnet.utils.checkpoint_util import maybe_load_checkpoint
 
@@ -27,22 +27,20 @@ def create_argparser():
 
 
 def get_config(args):
-    # TODO(lucaslingle): consider switching to yaml/pyyaml parser which has type inference.
-    #     This way you dont have to cast max_steps before/after passing **config to training_loop.
     base_path = os.path.join(args.models_dir, args.run_name)
-    config_path = os.path.join(base_path, 'config.ini')
+    config_path = os.path.join(base_path, 'config.yaml')
     checkpoint_dir = os.path.join(base_path, 'checkpoints')
     log_dir = os.path.join(base_path, 'tensorboard_logs')
 
-    config = configparser.ConfigParser(
+    config = ConfigParser(
         defaults={
             'checkpoint_dir': checkpoint_dir,
             'log_dir': log_dir,
             'data_dir': args.data_dir
-        }
+        },
     )
-    config.read(config_path)
-    return config['DEFAULT']
+    config.read(config_path, verbose=True)
+    return config
 
 
 def setup(rank, config):
@@ -50,30 +48,32 @@ def setup(rank, config):
     os.environ['MASTER_PORT'] = config.get('master_port')
     tc.distributed.init_process_group(
         backend=config.get('backend'),
-        world_size=config.getint('world_size'),
+        world_size=config.get('world_size'),
         rank=rank)
 
     # TODO(lucaslingle): add support for dataset_name, data_aug params.
     dl_train, dl_test = get_dataloaders(
         data_dir=config.get('data_dir'),
-        batch_size=config.getint('batch_size') // config.getint('world_size'))
+        dataset_name=config.get('dataset_name'),
+        data_aug=config.get('data_aug'),
+        batch_size=config.get('batch_size') // config.get('world_size'))
 
     device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet(
             architecture_spec=config.get('architecture_spec'),
-            preact=config.getboolean('preact'),
-            use_proj=config.getboolean('use_proj'),
-            dropout_prob=config.getfloat('dropout_prob')
+            preact=config.get('preact'),
+            use_proj=config.get('use_proj'),
+            dropout_prob=config.get('dropout_prob')
         ).to(device)
     )
     optimizer = tc.optim.SGD(
         classifier.parameters(),
-        lr=config.getfloat('lr'),
-        momentum=config.getfloat('momentum'),
-        dampening=config.getfloat('dampening'),
-        nesterov=config.getboolean('nesterov'),
-        weight_decay=config.getfloat('weight_decay'))
+        lr=config.get('lr'),
+        momentum=config.get('momentum'),
+        dampening=config.get('dampening'),
+        nesterov=config.get('nesterov'),
+        weight_decay=config.get('weight_decay'))
 
     a = maybe_load_checkpoint(
         checkpoint_dir=config.get('checkpoint_dir'),
@@ -121,18 +121,15 @@ if __name__ == '__main__':
     args = create_argparser().parse_args()
     config = get_config(args)
 
-    for key in config:
-        print(f"{key}: {config[key]}")
-
     if args.mode == 'train':
         tc.multiprocessing.spawn(
             train,
             args=(config,),
-            nprocs=config.getint('world_size'),
+            nprocs=config.get('world_size'),
             join=True)
     else:
         tc.multiprocessing.spawn(
             evaluate,
             args=(config,),
-            nprocs=config.getint('world_size'),
+            nprocs=config.get('world_size'),
             join=True)

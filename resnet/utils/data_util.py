@@ -9,11 +9,11 @@ import torchvision as tv
 from filelock import FileLock
 
 
-def get_dataloaders(data_dir, batch_size):
-    # mnist from yann lecun's site is down; using fashion mnist instead
-    dataset_name = 'fashion_mnist'
+def get_dataloaders(data_dir, dataset_name, data_aug, batch_size):
     os.makedirs(data_dir, exist_ok=True)
     lock_fp = os.path.join(data_dir, f"{dataset_name}.lock")
+    if data_aug is not None:
+        raise NotImplementedError("Gotta implement data aug later!")
 
     with FileLock(lock_fp):
         dataset_train = tv.datasets.FashionMNIST(
