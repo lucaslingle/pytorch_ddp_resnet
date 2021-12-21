@@ -126,11 +126,11 @@ if __name__ == '__main__':
         tc.multiprocessing.spawn(
             train,
             args=(config,),
-            nprocs=int(config.get('world_size')),
+            nprocs=config.getint('world_size'),
             join=True)
     else:
         tc.multiprocessing.spawn(
             evaluate,
             args=(config,),
-            nprocs=int(config.get('world_size')),
+            nprocs=config.getint('world_size'),
             join=True)
