@@ -15,7 +15,7 @@ from resnet.utils.types_util import Module, Optimizer, Scheduler, Dataloader
 
 
 def step_scheduler(scheduler, loss):
-    if hasattr(inspect.signature(scheduler.step), 'metrics'):
+    if 'metrics' in inspect.signature(scheduler.step):
         scheduler.step(loss)
     else:
         scheduler.step()
