@@ -5,6 +5,7 @@ Training loop.
 import torch as tc
 from torch.utils.tensorboard import SummaryWriter
 
+from resnet.algos.metrics import compute_losses_and_metrics
 from resnet.utils.checkpoint_util import save_checkpoint
 
 
@@ -36,26 +37,25 @@ def training_loop(
 
     while not done():
         for x, y in dl_train:
-            x = x.to(device)
-            y = y.to(device)
-
+            x, y = x.to(device), y.to(device)
             logits = classifier(x)
-            loss = tc.nn.CrossEntropyLoss()(input=logits, target=y)
-            acc = tc.eq(logits.argmax(dim=-1), y).float().mean()
+            metrics = compute_losses_and_metrics(logits=logits, labels=y)
 
             optimizer.zero_grad()
-            loss.backward()
+            metrics.get('loss').backward()
             optimizer.step()
 
-            global_loss = global_mean(loss)
-            global_acc = global_mean(acc)
-
+            global_metrics = {k: global_mean(v) for k,v in metrics.items()}
             if rank == 0:
-                writer.add_scalar('train/loss', global_loss.item(), global_step)
-                writer.add_scalar('train/acc', global_acc.item(), global_step)
+                for name in global_metrics:
+                    writer.add_scalar(
+                        tag=f"train/{name}",
+                        scalar_value=global_metrics.get(name).item(),
+                        global_step=global_step)
 
                 if global_step % 100 == 0:
-                    print(f"global step: {global_step}... loss: {global_loss.item()}")
+                    global_loss = global_metrics.get('loss').item()
+                    print(f"global step: {global_step}... loss: {global_loss}")
                     save_checkpoint(
                         checkpoint_dir=checkpoint_dir,
                         kind_name='classifier',
@@ -63,7 +63,7 @@ def training_loop(
                         rank=rank,
                         steps=global_step+1)
                     save_checkpoint(
-                        models_dir=checkpoint_dir,
+                        checkpoint_dir=checkpoint_dir,
                         kind_name='optimizer',
                         checkpointable=optimizer,
                         rank=rank,
