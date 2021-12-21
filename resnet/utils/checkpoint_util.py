@@ -46,13 +46,12 @@ def _clean(base_path, kind, n=5):
 
 def maybe_load_checkpoint(
         checkpoint_dir: str,
-        run_name: str,
         kind_name: str,
         checkpointable: Union[tc.nn.Module, tc.optim.Optimizer],
         steps: Optional[int]
 ):
     try:
-        base_path = os.path.join(checkpoint_dir, run_name, 'checkpoints')
+        base_path = checkpoint_dir
         steps_ = _latest_step(base_path, kind_name) if steps is None else steps
         path = os.path.join(base_path, _format_name(kind_name, steps_, 'pth'))
         state_dict = tc.load(path)
@@ -69,14 +68,13 @@ def maybe_load_checkpoint(
 
 def save_checkpoint(
         checkpoint_dir: str,
-        run_name: str,
         kind_name: str,
         checkpointable: Union[tc.nn.Module, tc.optim.Optimizer],
         rank: int,
         steps: int
 ):
     if rank == 0:
-        base_path = os.path.join(checkpoint_dir, run_name, 'checkpoints')
+        base_path = checkpoint_dir
         os.makedirs(base_path, exist_ok=True)
         path = os.path.join(base_path, _format_name(kind_name, steps, 'pth'))
         state_dict = checkpointable.state_dict()

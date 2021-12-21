@@ -2,8 +2,6 @@
 Training loop.
 """
 
-import os
-
 import torch as tc
 from torch.utils.tensorboard import SummaryWriter
 
@@ -15,16 +13,16 @@ def training_loop(
         world_size,
         classifier,
         optimizer,
-        dataloader,
+        dl_train,
+        dl_test,
         device,
         global_step,
         max_steps,
         checkpoint_dir,
-        run_name
+        log_dir
 ):
     if rank == 0:
-        log_path = os.path.join(checkpoint_dir, run_name, 'tensorboard_logs')
-        writer = SummaryWriter(log_path)
+        writer = SummaryWriter(log_dir)
 
     def global_mean(metric):  # for logging
         global_metric = metric.detach()
@@ -36,7 +34,7 @@ def training_loop(
         return global_step >= max_steps
 
     while not done():
-        for x, y in dataloader:
+        for x, y in dl_train:
             x = x.to(device)
             y = y.to(device)
 
@@ -59,14 +57,12 @@ def training_loop(
                     print(f"global step: {global_step}... loss: {global_loss.item()}")
                     save_checkpoint(
                         checkpoint_dir=checkpoint_dir,
-                        run_name=run_name,
                         kind_name='classifier',
                         checkpointable=classifier,
                         rank=rank,
                         steps=global_step+1)
                     save_checkpoint(
-                        checkpoint_dir=checkpoint_dir,
-                        run_name=run_name,
+                        models_dir=checkpoint_dir,
                         kind_name='optimizer',
                         checkpointable=optimizer,
                         rank=rank,

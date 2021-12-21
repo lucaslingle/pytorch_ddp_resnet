@@ -36,10 +36,21 @@ def create_argparser():
     parser.add_argument("--nesterov", choices=[0,1], default=0)
 
     ### persistence
-    parser.add_argument("--checkpoint_dir", type=str, default='models_dir')
+    parser.add_argument("--models_dir", type=str, default='models_dir')
     parser.add_argument("--run_name", type=str, default='default_hparams')
     parser.add_argument("--data_dir", type=str, default="data_dir")
     return parser
+
+
+def persistence_spec(config):
+    checkpoint_dir = os.path.join(
+        config.get('models_dir'), config.get('run_name'), 'checkpoints')
+    log_dir = os.path.join(
+        config.get('models_dir'), config.get('run_name'), 'tensorboard_logs')
+    return {
+        "checkpoint_dir": checkpoint_dir,
+        "log_dir": log_dir
+    }
 
 
 def setup(rank, config):
@@ -58,15 +69,15 @@ def setup(rank, config):
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet().to(device))
     optimizer = tc.optim.Adam(classifier.parameters(), lr=config.get('lr'))
+
+    checkpoint_dir = persistence_spec(config).get('checkpoint_dir')
     a = maybe_load_checkpoint(
-        checkpoint_dir=config.get('checkpoint_dir'),
-        run_name=config.get('run_name'),
+        checkpoint_dir=checkpoint_dir,
         kind_name='classifier',
         checkpointable=classifier,
         steps=None)
     b = maybe_load_checkpoint(
-        checkpoint_dir=config.get('checkpoint_dir'),
-        run_name=config.get('run_name'),
+        checkpoint_dir=checkpoint_dir,
         kind_name='optimizer',
         checkpointable=optimizer,
         steps=None)
@@ -90,17 +101,9 @@ def cleanup():
 
 def train(rank, config):
     learning_system = setup(rank, config)
+    persist_spec = persistence_spec(config)
     training_loop(
-        rank=rank,
-        world_size=config.get('world_size'),
-        device=learning_system.get('device'),
-        classifier=learning_system.get('classifier'),
-        optimizer=learning_system.get('optimizer'),
-        dataloader=learning_system.get('dl_train'),
-        global_step=learning_system.get('global_step'),
-        max_steps=config.get('max_steps'),
-        checkpoint_dir=config.get('checkpoint_dir'),
-        run_name=config.get('run_name'))
+        rank=rank, **config, **learning_system, **persist_spec)
     cleanup()
 
 
