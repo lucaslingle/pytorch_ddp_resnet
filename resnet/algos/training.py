@@ -45,7 +45,7 @@ def training_loop(
     Runs a training loop on a given process.
     If rank is zero, logs metrics to tensorboard and saves checkpoints periodically.
 
-    :param rank: Rank.
+    :param rank: Process rank.
     :param world_size: World size.
     :param classifier: Classifier.
     :param optimizer: Optimizer.
