@@ -110,8 +110,7 @@ def train(rank, config):
 def evaluate(rank, config):
     learning_system = setup(rank, config)
     if rank == 0:
-        metrics = evaluation_loop(
-            **config, **learning_system, **persist_spec)
+        metrics = evaluation_loop(**config, **learning_system)
         print(f"Test loss: {metrics['loss']}... Test accuracy: {metrics['acc']}")
     cleanup()
 
