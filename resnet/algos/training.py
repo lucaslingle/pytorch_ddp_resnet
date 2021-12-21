@@ -6,7 +6,7 @@ import torch as tc
 from torch.utils.tensorboard import SummaryWriter
 
 from resnet.algos.metrics import compute_losses_and_metrics
-from resnet.utils.checkpoint_util import save_checkpoint
+from resnet.utils.checkpoint_util import save_checkpoints
 
 
 def training_loop(
@@ -57,25 +57,15 @@ def training_loop(
                 if global_step % 100 == 0:
                     global_loss = global_metrics.get('loss').item()
                     print(f"global step: {global_step}... loss: {global_loss}")
-                    save_checkpoint(
+                    save_checkpoints(
                         checkpoint_dir=checkpoint_dir,
-                        kind_name='classifier',
-                        checkpointable=classifier,
+                        checkpointables={
+                            'classifier': classifier,
+                            'optimizer': optimizer,
+                            'scheduler': scheduler
+                        },
                         rank=rank,
                         steps=global_step+1)
-                    save_checkpoint(
-                        checkpoint_dir=checkpoint_dir,
-                        kind_name='optimizer',
-                        checkpointable=optimizer,
-                        rank=rank,
-                        steps=global_step+1)
-                    if scheduler:
-                        save_checkpoint(
-                            checkpoint_dir=checkpoint_dir,
-                            kind_name='scheduler',
-                            checkpointable=scheduler,
-                            rank=rank,
-                            steps=global_step+1)
 
             global_step += 1
             if done():

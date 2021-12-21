@@ -2,11 +2,16 @@
 Checkpoint util.
 """
 
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 import os
 import re
 
 import torch as tc
+
+Module = tc.nn.Module
+Optimizer = tc.optim.Optimizer
+Scheduler = tc.optim.lr_scheduler._LRScheduler
+Checkpointable = Union[Module, Optimizer, Scheduler]
 
 
 def _format_name(kind, steps, suffix):
@@ -47,9 +52,9 @@ def _clean(base_path, kind, n=5):
 def maybe_load_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
-        checkpointable: Union[tc.nn.Module, tc.optim.Optimizer],
+        checkpointable: Checkpointable,
         steps: Optional[int]
-):
+) -> int:
     try:
         base_path = checkpoint_dir
         steps_ = _latest_step(base_path, kind_name) if steps is None else steps
@@ -69,10 +74,10 @@ def maybe_load_checkpoint(
 def save_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
-        checkpointable: Union[tc.nn.Module, tc.optim.Optimizer],
+        checkpointable: Checkpointable,
         rank: int,
         steps: int
-):
+) -> None:
     if rank == 0:
         base_path = checkpoint_dir
         os.makedirs(base_path, exist_ok=True)
@@ -80,3 +85,53 @@ def save_checkpoint(
         state_dict = checkpointable.state_dict()
         tc.save(state_dict, path)
         _clean(base_path, kind_name, n=5)
+
+
+def maybe_load_checkpoints(
+        checkpoint_dir: str,
+        checkpointables: Dict[str, Checkpointable],
+        steps: Optional[int]
+) -> int:
+    """
+    :param checkpoint_dir: checkpoint dir.
+    :param checkpointables: dictionary of checkpointables keyed by kind name.
+    :param steps: number of steps so far.
+    :return: Number of steps in latest checkpoint. If no checkpoints, returns 0.
+    """
+    global_steps = list()
+    for kind_name in checkpointables:
+        checkpointable = checkpointables.get(kind_name)
+        if checkpointable is not None:
+            step_ = maybe_load_checkpoint(
+                checkpoint_dir=checkpoint_dir,
+                kind_name=kind_name,
+                checkpointable=checkpointable,
+                steps=steps)
+            global_steps.append(step_)
+    if len(set(global_steps)) != 1:
+        msg = "Latest checkpoint steps not aligned."
+        raise RuntimeError(msg)
+
+
+def save_checkpoints(
+        checkpoint_dir: str,
+        checkpointables: Dict[str, Checkpointable],
+        rank: int,
+        steps: int
+) -> None:
+    """
+    :param checkpoint_dir: checkpoint dir.
+    :param checkpointables: dictionary of checkpointables keyed by kind name.
+    :param rank: process rank.
+    :param steps: number of steps so far.
+    :return: None
+    """
+    for kind_name in checkpointables:
+        checkpointable = checkpointables.get(kind_name)
+        if checkpointable is not None:
+            save_checkpoint(
+                checkpoint_dir=checkpoint_dir,
+                kind_name=kind_name,
+                checkpointable=checkpointable,
+                rank=rank,
+                steps=steps)

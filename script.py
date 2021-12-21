@@ -12,7 +12,7 @@ from resnet.algos.evaluation import evaluation_loop
 from resnet.utils.config_util import ConfigParser
 from resnet.utils.data_util import get_dataloaders
 from resnet.utils.lr_util import get_scheduler
-from resnet.utils.checkpoint_util import maybe_load_checkpoint
+from resnet.utils.checkpoint_util import maybe_load_checkpoints
 
 
 def create_argparser():
@@ -103,9 +103,12 @@ def setup(rank, config):
 
     global_step = maybe_load_checkpoints(
         checkpoint_dir=config.get('checkpoint_dir'),
-        classifier=classifier,
-        optimizer=optimizer,
-        scheduler=scheduler)
+        checkpointables={
+            'classifier': classifier,
+            'optimizer': optimizer,
+            'scheduler': scheduler
+        },
+        steps=None)
 
     return {
         "device": device,
@@ -114,7 +117,7 @@ def setup(rank, config):
         "classifier": classifier,
         "optimizer": optimizer,
         "scheduler": scheduler,
-        "global_step": a
+        "global_step": global_step
     }
 
 
