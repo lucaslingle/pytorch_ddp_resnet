@@ -37,7 +37,7 @@ def get_config(args):
             'checkpoint_dir': checkpoint_dir,
             'log_dir': log_dir,
             'data_dir': args.data_dir
-        },
+        }
     )
     config.read(config_path, verbose=True)
     return config
