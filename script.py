@@ -2,10 +2,12 @@
 
 import argparse
 import os
+import configparser
+import sys
 
 import torch as tc
 
-from resnet.architectures.residual_block import ResNet
+from resnet.architectures.resnet import ResNet
 from resnet.algos.training import training_loop
 from resnet.algos.evaluation import evaluation_loop
 
@@ -18,36 +20,19 @@ def create_argparser():
         description="A Pytorch implementation of Deep Residual Networks, " +
                     "using Torch Distributed Data Parallel.")
 
-    ### distributed
     parser.add_argument("--mode", choices=['train', 'eval'], default='train')
-    parser.add_argument("--backend", choices=['gloo', 'mpi', 'nccl'], default='gloo')
-    parser.add_argument("--world_size", type=int, default=8)
-    parser.add_argument("--master_addr", type=str, default='localhost')
-    parser.add_argument("--master_port", type=int, default=12345)
-
-    ### training hparams
-    parser.add_argument("--dataset", choices=['cifar10', 'cifar100', 'imagenet'])
-    # TODO(lucaslingle): add data augmentation choices argument, and implement code for it.
-    parser.add_argument("--max_steps", type=int, default=10000)
-    parser.add_argument("--global_batch_size", type=int, default=64)
-    parser.add_argument("--lr", type=float, default=3e-4)
-    parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--dampening", type=float, default=0.0)
-    parser.add_argument("--nesterov", choices=[0,1], default=0)
-
-    ### persistence
     parser.add_argument("--models_dir", type=str, default='models_dir')
     parser.add_argument("--run_name", type=str, default='default_hparams')
     parser.add_argument("--data_dir", type=str, default="data_dir")
     return parser
 
 
-def persistence_spec(config):
-    checkpoint_dir = os.path.join(
-        config.get('models_dir'), config.get('run_name'), 'checkpoints')
-    log_dir = os.path.join(
-        config.get('models_dir'), config.get('run_name'), 'tensorboard_logs')
+def persistence_spec(models_dir, run_name):
+    config_path = os.path.join(models_dir, run_name, 'config.ini')
+    checkpoint_dir = os.path.join(models_dir, run_name, 'checkpoints')
+    log_dir = os.path.join(models_dir, run_name, 'tensorboard_logs')
     return {
+        "config_path": config_path,
         "checkpoint_dir": checkpoint_dir,
         "log_dir": log_dir
     }
@@ -58,26 +43,30 @@ def setup(rank, config):
     os.environ['MASTER_PORT'] = str(config.get('master_port'))
     tc.distributed.init_process_group(
         backend=config.get('backend'),
-        world_size=config.get('world_size'),
+        world_size=int(config.get('world_size')),
         rank=rank)
 
     dl_train, dl_test = get_dataloaders(
         data_dir=config.get('data_dir'),
-        batch_size=config.get('batch_size'))
+        batch_size=int(config.get('batch_size')))  # todo: make sure this is local batch size in configs
 
     device = f'cuda:{rank}' if tc.cuda.is_available() else 'cpu'
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet().to(device))
-    optimizer = tc.optim.Adam(classifier.parameters(), lr=config.get('lr'))
-
-    checkpoint_dir = persistence_spec(config).get('checkpoint_dir')
+    optimizer = tc.optim.SGD(
+        classifier.parameters(),
+        lr=float(config.get('lr')),
+        momentum=float(config.get('momentum')),
+        dampening=float(config.get('dampening')),
+        nesterov=config.getbool('nesterov'),
+        weight_decay=float(config.get('weight_decay')))
     a = maybe_load_checkpoint(
-        checkpoint_dir=checkpoint_dir,
+        checkpoint_dir=config.get('checkpoint_dir'),
         kind_name='classifier',
         checkpointable=classifier,
         steps=None)
     b = maybe_load_checkpoint(
-        checkpoint_dir=checkpoint_dir,
+        checkpoint_dir=config.get('checkpoint_dir'),
         kind_name='optimizer',
         checkpointable=optimizer,
         steps=None)
@@ -101,9 +90,8 @@ def cleanup():
 
 def train(rank, config):
     learning_system = setup(rank, config)
-    persist_spec = persistence_spec(config)
     training_loop(
-        rank=rank, **config, **learning_system, **persist_spec)
+        rank=rank, **config, **learning_system)
     cleanup()
 
 
@@ -117,16 +105,25 @@ def evaluate(rank, config):
 
 if __name__ == '__main__':
     args = create_argparser().parse_args()
-    config = vars(args)
+    persist_spec = persistence_spec(args.models_dir, args.run_name)
+
+    config = configparser.ConfigParser()
+    config.read(persist_spec.get('config_path'))
+    config.read_dict({'DEFAULT': persist_spec})
+    config = config['DEFAULT']
+
+    for key in config:
+        print(f"{key}: {config[key]}")
+
     if args.mode == 'train':
         tc.multiprocessing.spawn(
             train,
             args=(config,),
-            nprocs=args.world_size,
+            nprocs=int(config.get('world_size')),
             join=True)
     else:
         tc.multiprocessing.spawn(
             evaluate,
             args=(config,),
-            nprocs=args.world_size,
+            nprocs=int(config.get('world_size')),
             join=True)
