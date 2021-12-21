@@ -10,7 +10,7 @@ from resnet.algos.training import training_loop
 from resnet.algos.evaluation import evaluation_loop
 
 from resnet.utils.config_util import ConfigParser
-from resnet.utils.data_util import ShardSpec, get_dataloaders
+from resnet.utils.data_util import get_dataloaders
 from resnet.utils.optim_util import get_optimizer, get_scheduler
 from resnet.utils.checkpoint_util import maybe_load_checkpoints
 
