@@ -17,12 +17,7 @@ def requires_loss(scheduler: Scheduler) -> bool:
     return isinstance(scheduler, tc.optim.lr_scheduler.ReduceLROnPlateau)
 
 
-def step_scheduler(
-        scheduler: Optional[Scheduler],
-        loss: Union[tc.Tensor, float]
-) -> None:
-    if scheduler is None:
-        return
+def step_scheduler(scheduler: Scheduler, loss: Union[tc.Tensor, float]) -> None:
     if requires_loss(scheduler):
         scheduler.step(loss)
     else:
@@ -95,7 +90,7 @@ def training_loop(
             global_metrics = global_means(metrics)
             global_loss = global_metrics.get('loss').item()
 
-            if scheduler_step_unit == 'batch':
+            if scheduler and scheduler_step_unit == 'batch':
                 step_scheduler(scheduler, global_loss)
 
             if rank == 0:
@@ -134,7 +129,7 @@ def training_loop(
                 scalar_value=val_metrics_global.get(name).item(),
                 global_step=epoch)
 
-        if scheduler_step_unit == 'epoch':
+        if scheduler and scheduler_step_unit == 'epoch':
             # during training, the validation set is sharded over multiple gpus,
             # so we should compute global loss over all shards before stepping.
             val_loss_global = val_metrics_global.get('loss').item()
