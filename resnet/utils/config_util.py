@@ -6,7 +6,7 @@ import yaml
 class ConfigParser:
     def __init__(self, defaults: Optional[Dict[str, Any]]) -> None:
         super().__init__()
-        self._defaults = defaults if defaults is not None else dict()
+        self._defaults = defaults if defaults else dict()
         self._config = None
 
     def read(self, config_path: str, verbose: bool = False) -> None:
