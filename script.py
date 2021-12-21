@@ -51,6 +51,7 @@ def setup(rank, config):
         world_size=config.getint('world_size'),
         rank=rank)
 
+    # TODO(lucaslingle): add support for dataset_name, data_aug params.
     dl_train, dl_test = get_dataloaders(
         data_dir=config.get('data_dir'),
         batch_size=config.getint('batch_size') // config.getint('world_size'))
