@@ -102,8 +102,7 @@ def cleanup():
 
 def train(rank, config):
     learning_system = setup(rank, config)
-    training_loop(
-        rank=rank, **config, **learning_system)
+    training_loop(rank, **config, **learning_system)
     cleanup()
 
 
