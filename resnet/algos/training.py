@@ -3,7 +3,6 @@ Training loop.
 """
 
 from typing import Optional, Dict, Any, Union
-import inspect
 
 import torch as tc
 from torch.utils.tensorboard import SummaryWriter
@@ -14,12 +13,8 @@ from resnet.utils.checkpoint_util import save_checkpoints
 from resnet.utils.types_util import Module, Optimizer, Scheduler, Dataloader
 
 
-def requires_loss(scheduler: Scheduler) -> bool:
-    return 'metrics' in inspect.signature(scheduler.step)
-
-
 def step_scheduler(scheduler: Scheduler, loss: Union[tc.Tensor, float]) -> None:
-    if requires_loss(scheduler):
+    if isinstance(scheduler, tc.optim.lr_scheduler.ReduceLROnPlateau):
         scheduler.step(loss)
     else:
         scheduler.step()
@@ -71,6 +66,9 @@ def training_loop(
             global_metric, dst=0, op=tc.distributed.ReduceOp.SUM)
         return global_metric / world_size
 
+    def global_means(metrics):
+        return {k: global_mean(v) for k, v in metrics.items()}
+
     def done():
         return global_step >= max_steps
 
@@ -85,7 +83,7 @@ def training_loop(
             loss.backward()
             optimizer.step()
 
-            global_metrics = {k: global_mean(v) for k,v in metrics.items()}
+            global_metrics = global_means(metrics)
             global_loss = global_metrics.get('loss').item()
 
             if scheduler_step_unit == 'batch':
@@ -115,10 +113,18 @@ def training_loop(
             if done():
                 break
 
+        val_metrics = evaluation_loop(rank, classifier, dl_test, device)
+        val_metrics_global = global_means(val_metrics)
+        epoch = (global_step // len(dl_train))
+
+        for name in val_metrics_global:
+            writer.add_scalar(
+                tag=f"val/{name}",
+                scalar_value=val_metrics_global.get(name).item(),
+                global_step=epoch)
+
         if scheduler_step_unit == 'epoch':
             # during training, the validation set is sharded over multiple gpus,
-            # so compute global loss before stepping.
-            val_metrics = evaluation_loop(rank, classifier, dl_test, device)
-            val_loss = val_metrics.get('loss')
-            val_loss_global = global_mean(val_loss).item()
+            # so we should compute global loss over all shards before stepping.
+            val_loss_global = val_metrics_global.get('loss').item()
             step_scheduler(scheduler, val_loss_global)
