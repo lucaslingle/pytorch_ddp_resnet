@@ -86,7 +86,7 @@ def save_checkpoint(
 
 def maybe_load_checkpoints(
         checkpoint_dir: str,
-        checkpointables: Dict[str, Checkpointable],
+        checkpointables: Dict[str, Optional[Checkpointable]],
         steps: Optional[int]
 ) -> int:
     """
@@ -113,7 +113,7 @@ def maybe_load_checkpoints(
 
 def save_checkpoints(
         checkpoint_dir: str,
-        checkpointables: Dict[str, Checkpointable],
+        checkpointables: Dict[str, Optional[Checkpointable]],
         rank: int,
         steps: int
 ) -> None:
