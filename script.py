@@ -94,7 +94,7 @@ def setup(rank, config):
         kind_name='scheduler',
         checkpointable=scheduler,
         steps=None)
-    if a != b or (c is not None or b != c):
+    if a != b or (c is not None and b != c):
         msg = "Latest checkpoint steps not aligned."
         raise RuntimeError(msg)
 
