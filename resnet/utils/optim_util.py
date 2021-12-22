@@ -4,6 +4,7 @@ Learning rate scheduler util.
 
 from typing import Optional, Dict, Any
 import importlib
+import abc
 
 from resnet.utils.types_util import Module, Optimizer, Scheduler
 

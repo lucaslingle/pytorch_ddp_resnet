@@ -9,7 +9,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from resnet.algos.metrics import compute_losses_and_metrics
 from resnet.algos.evaluation import evaluation_loop
-from resnet.utils.checkpoint_util import save_checkpoints
+from resnet.utils.checkpoint_util import (
+    save_checkpoints,
+    get_checkpoint_strategy,
+)
 from resnet.utils.types_util import Module, Optimizer, Scheduler, Dataloader
 
 
@@ -36,6 +39,8 @@ def training_loop(
         device: str,
         global_step: int,
         max_steps: int,
+        checkpoint_strategy: str,
+        checkpoint_unit: str,
         checkpoint_dir: str,
         log_dir: str,
         **kwargs: Dict[str, Any]
@@ -63,6 +68,7 @@ def training_loop(
 
     if rank == 0:
         writer = SummaryWriter(log_dir)
+    checkpoint_strategy = get_checkpoint_strategy(checkpoint_strategy)
 
     def global_mean(metric):  # for logging
         global_metric = metric.detach()
@@ -100,8 +106,8 @@ def training_loop(
                         scalar_value=global_metrics.get(name).item(),
                         global_step=global_step)
 
-                if global_step % 100 == 0:
-                    # todo(lucaslingle): add support for sophisticated checkpointing strategies.
+                if checkpoint_strategy.is_eligible(
+                        global_step=global_step, loss=global_loss):
                     print(f"global step: {global_step}... loss: {global_loss}")
                     save_checkpoints(
                         checkpoint_dir=checkpoint_dir,

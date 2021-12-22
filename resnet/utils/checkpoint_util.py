@@ -5,6 +5,7 @@ Checkpoint util.
 from typing import Optional, Dict
 import os
 import re
+import abc
 
 import torch as tc
 
@@ -129,3 +130,44 @@ def save_checkpoints(
                 kind_name=kind_name,
                 checkpointable=checkpointable,
                 steps=steps)
+
+
+class CheckpointStrategy(abc.ABC):
+    def __init__(self):
+        pass
+
+    def is_eligible(self, **kwargs) -> bool:
+        pass
+
+
+class FrequencyCheckpointStrategy(CheckpointStrategy):
+    def __init__(self, frequency, **kwargs):
+        super().__init__()
+        self._frequency = frequency
+
+    def is_eligible(self, global_step, **kwargs) -> bool:
+        return global_step > 0 and global_step % self._frequency
+
+
+class PerformanceCheckpointStrategy(CheckpointStrategy):
+    def __init__(self, **kwargs):
+        super().__init__()
+        self._lowest_loss = None
+
+    def is_eligible(self, loss, **kwargs) -> bool:
+        if self._lowest_loss is None or loss < self._lowest_loss:
+            self._lowest_loss = loss
+            return True
+        return False
+
+
+def get_checkpoint_strategy(
+        checkpoint_strategy,
+        **kwargs
+) -> CheckpointStrategy:
+    if checkpoint_strategy == 'frequency':
+        return FrequencyCheckpointStrategy(**kwargs)
+    elif checkpoint_strategy == 'performance':
+        return PerformanceCheckpointStrategy(**kwargs)
+    else:
+        raise NotImplementedError
