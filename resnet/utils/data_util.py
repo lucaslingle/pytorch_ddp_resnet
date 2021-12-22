@@ -120,12 +120,13 @@ class _ZCAWhiteningTransform(tc.nn.Module):
         rgb_cov /= num_items
         rgb_cov_sqrt = sp.linalg.sqrtm(rgb_cov)
 
-        self._matrix.copy_(tc.tensor(rgb_cov_sqrt).float())
+        self._zca_matrix.copy_(tc.tensor(rgb_cov_sqrt).float())
         self._fitted = True
 
     def forward(self, x):
         assert self._fitted
-        return tc.matmul(self._matrix, x)
+        matrix = self._matrix[None, None, :, :]
+        return tc.matmul(matrix, x)
 
 
 class _IdentityTransform(tc.nn.Module):
