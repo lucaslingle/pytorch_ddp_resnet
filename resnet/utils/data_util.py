@@ -2,7 +2,7 @@
 Data util.
 """
 
-from typing import Tuple, Dict, Union
+from typing import Tuple, Dict, Union, ANy
 import os
 import importlib
 
@@ -12,7 +12,7 @@ import torchvision as tv
 from filelock import FileLock
 
 from resnet.utils.checkpoint_util import maybe_load_checkpoint, save_checkpoint
-from resnet.utils.types_util import Module
+from resnet.utils.types_util import Module, Dataloader
 
 
 def _get_dataset(dataset_cls_name, **kwargs):
@@ -181,8 +181,24 @@ def get_dataloaders(
         data_aug: Dict[str, Union[int, str]],
         checkpoint_dir: str,
         local_batch_size: int,
-        num_shards: int
-):
+        num_shards: int,
+        **kwargs: Dict[str, Any]
+) -> Tuple[Dataloader, Dataloader]:
+    """
+    Downloads data, builds preprocessing pipeline, shards it,
+        shuffles it, and batches it via dataloaders.
+
+    :param rank: Process rank.
+    :param data_dir: Data directory to save downloaded datasets to.
+    :param dataset_cls_name: Dataset class name in torchvision.datasets.
+    :param data_aug: Data augmentation dictionary.
+    :param checkpoint_dir: Checkpoint directory to save fitted whitening transforms.
+    :param local_batch_size: Batch size per process.
+    :param num_shards: Number of shards for the data.
+    :param kwargs: Keyword arguments.
+    :return: Tuple of train and test dataloaders,
+        with data sharded appropriately per-process.
+    """
     os.makedirs(data_dir, exist_ok=True)
     lock_fp = os.path.join(data_dir, f"{dataset_cls_name}.lock")
     with FileLock(lock_fp):
@@ -222,7 +238,7 @@ def get_dataloaders(
             pad_type=data_aug.get('pad_type'))
         crop_transform = get_crop_transform(
             crop_size=data_aug.get('crop_size'))
-        
+
         # torchvision's native tensor transform scales everything down by 255,
         # which leaves zero padding unaffected. moreover, the whitening ops
         # mathematically commute with this scaling.
