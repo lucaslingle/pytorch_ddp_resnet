@@ -222,7 +222,7 @@ def get_dataloaders(
             # that process will fit the whitening transform,
             # and the other processes will load it later,
             # in which case the step will not be zero anymore.
-            whitening_transform.fit(dataset_train=dataset_train_)
+            whitening_transform.fit(dataset=dataset_train_)
             save_checkpoint(
                 checkpoint_dir=checkpoint_dir,
                 kind_name='whitening',
