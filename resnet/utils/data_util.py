@@ -47,7 +47,6 @@ class _ZeroMeanWhiteningTransform(tc.nn.Module):
         x = tc.tensor(np.array(x).astype(np.float32)).float()
         shift = self._rgb_mean.reshape(1, 1, 3)
         whitened = (x - shift)
-        print(whitened.shape)
         return PIL.Image.fromarray(whitened.detach().numpy().astype(np.uint8))
 
 
