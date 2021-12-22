@@ -29,4 +29,6 @@ scheduler_args:
     patience: 10
 scheduler_step_unit: epoch
 checkpoint_strategy_cls_name: FrequencyCheckpointStrategy
-checkpoint_strategy_args: {unit: epoch, frequency: 5}
+checkpoint_strategy_args:
+    unit: epoch
+    frequency: 5
