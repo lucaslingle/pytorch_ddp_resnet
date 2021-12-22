@@ -37,7 +37,6 @@ def training_loop(
         global_step: int,
         max_steps: int,
         checkpoint_strategy: CheckpointStrategy,
-        checkpoint_step_unit: str,
         checkpoint_dir: str,
         log_dir: str,
         **kwargs: Dict[str, Any]
@@ -58,6 +57,7 @@ def training_loop(
     :param global_step: Global step to start from.
     :param max_steps: Maximum number of steps.
     :param checkpoint_dir: Checkpoint directory to save checkpoints to.
+    :param checkpoint_strategy: CheckpointStrategy instance.
     :param log_dir: Logging directory for Tensorboard.
     :param kwargs: Keyword args.
     :return:
