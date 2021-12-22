@@ -9,10 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from resnet.algos.metrics import compute_losses_and_metrics
 from resnet.algos.evaluation import evaluation_loop
-from resnet.utils.checkpoint_util import (
-    save_checkpoints,
-    get_checkpoint_strategy,
-)
+from resnet.utils.checkpoint_util import CheckpointStrategy, save_checkpoints
 from resnet.utils.types_util import Module, Optimizer, Scheduler, Dataloader
 
 
@@ -39,8 +36,8 @@ def training_loop(
         device: str,
         global_step: int,
         max_steps: int,
-        checkpoint_strategy: str,
-        checkpoint_unit: str,
+        checkpoint_strategy: CheckpointStrategy,
+        checkpoint_step_unit: str,
         checkpoint_dir: str,
         log_dir: str,
         **kwargs: Dict[str, Any]
@@ -68,7 +65,6 @@ def training_loop(
 
     if rank == 0:
         writer = SummaryWriter(log_dir)
-    checkpoint_strategy = get_checkpoint_strategy(checkpoint_strategy)
 
     def global_mean(metric):  # for logging
         global_metric = metric.detach()
@@ -107,7 +103,7 @@ def training_loop(
                         global_step=global_step)
 
                 if checkpoint_strategy.is_eligible(
-                        global_step=global_step, loss=global_loss):
+                       unit='batch', global_step=global_step, loss=global_loss):
                     print(f"global step: {global_step}... loss: {global_loss}")
                     save_checkpoints(
                         checkpoint_dir=checkpoint_dir,
@@ -134,8 +130,21 @@ def training_loop(
                 scalar_value=val_metrics_global.get(name).item(),
                 global_step=epoch)
 
+        val_loss_global = val_metrics_global.get('loss').item()
+        print(f"epoch: {epoch}... loss: {val_loss_global}")
+
         if scheduler and scheduler_step_unit == 'epoch':
             # during training, the validation set is sharded over multiple gpus,
             # so we should compute global loss over all shards before stepping.
-            val_loss_global = val_metrics_global.get('loss').item()
             step_scheduler(scheduler, val_loss_global)
+
+        if checkpoint_strategy.is_eligible(
+                unit='epoch', global_step=global_step, loss=val_loss_global):
+            save_checkpoints(
+                checkpoint_dir=checkpoint_dir,
+                checkpointables={
+                    'classifier': classifier,
+                    'optimizer': optimizer,
+                    'scheduler': scheduler
+                },
+                steps=global_step+1)

@@ -12,7 +12,9 @@ from resnet.algos.evaluation import evaluation_loop
 from resnet.utils.config_util import ConfigParser
 from resnet.utils.data_util import get_dataloaders
 from resnet.utils.optim_util import get_optimizer, get_scheduler
-from resnet.utils.checkpoint_util import maybe_load_checkpoints
+from resnet.utils.checkpoint_util import (
+    get_checkpoint_strategy, maybe_load_checkpoints
+)
 
 
 def create_argparser():
@@ -85,6 +87,9 @@ def setup(rank, config):
         optimizer=optimizer,
         scheduler_cls_name=config.get('scheduler_cls_name'),
         scheduler_args=config.get('scheduler_args'))
+    checkpoint_strategy = get_checkpoint_strategy(
+        checkpoint_strategy=config.get('checkpoint_strategy'),
+        checkpoint_strategy_args=config.get('checkpoint_strategy_args'))
 
     global_step = maybe_load_checkpoints(
         checkpoint_dir=config.get('checkpoint_dir'),
@@ -102,6 +107,7 @@ def setup(rank, config):
         "classifier": classifier,
         "optimizer": optimizer,
         "scheduler": scheduler,
+        "checkpoint_strategy": checkpoint_strategy,
         "global_step": global_step
     }
 

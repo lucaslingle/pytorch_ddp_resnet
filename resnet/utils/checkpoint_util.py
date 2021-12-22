@@ -2,7 +2,7 @@
 Checkpoint util.
 """
 
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import os
 import re
 import abc
@@ -141,33 +141,44 @@ class CheckpointStrategy(abc.ABC):
 
 
 class FrequencyCheckpointStrategy(CheckpointStrategy):
-    def __init__(self, frequency, **kwargs):
+    def __init__(self, frequency, unit, **kwargs):
         super().__init__()
         self._frequency = frequency
+        self._unit = unit
 
-    def is_eligible(self, global_step, **kwargs) -> bool:
-        return global_step > 0 and global_step % self._frequency == 0
+    def is_eligible(self, step, unit, **kwargs) -> bool:
+        return self._unit == unit and \
+               (step > 0 and step % self._frequency == 0)
 
 
 class PerformanceCheckpointStrategy(CheckpointStrategy):
-    def __init__(self, **kwargs):
+    def __init__(self, unit, **kwargs):
         super().__init__()
         self._lowest_loss = None
+        self._unit = unit
 
-    def is_eligible(self, loss, **kwargs) -> bool:
-        if self._lowest_loss is None or loss < self._lowest_loss:
+    def is_eligible(self, loss, unit, **kwargs) -> bool:
+        if self._unit == unit and \
+           (self._lowest_loss is None or loss < self._lowest_loss):
             self._lowest_loss = loss
             return True
         return False
 
 
 def get_checkpoint_strategy(
-        checkpoint_strategy,
-        **kwargs
+        checkpoint_strategy: str,
+        checkpoint_strategy_args: Optional[Dict[str, Any]]
 ) -> CheckpointStrategy:
+    """
+    :param checkpoint_strategy: One of 'frequency', 'performance'.
+    :param checkpoint_strategy_args: Checkpoint strategy args.
+    :return:
+    """
+    if checkpoint_strategy_args is None:
+        checkpoint_strategy_args = dict()
     if checkpoint_strategy == 'frequency':
-        return FrequencyCheckpointStrategy(**kwargs)
+        return FrequencyCheckpointStrategy(**checkpoint_strategy_args)
     elif checkpoint_strategy == 'performance':
-        return PerformanceCheckpointStrategy(**kwargs)
+        return PerformanceCheckpointStrategy(**checkpoint_strategy_args)
     else:
         raise NotImplementedError
