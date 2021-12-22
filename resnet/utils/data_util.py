@@ -43,8 +43,10 @@ class _ZeroMeanWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
+        x = tc.tensor(np.array(x).astype(np.float32)).float()
         shift = self._rgb_mean.view(1, 1, 3)
-        return x - shift
+        whitened = (x - shift)
+        return whitened.detach().numpy()
 
 
 class _StandardizeWhiteningTransform(tc.nn.Module):
@@ -79,9 +81,11 @@ class _StandardizeWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
+        x = tc.tensor(np.array(x).astype(np.float32)).float()
         shift = self._rgb_mean.view(1, 1, 3)
         scale = self._rgb_stddev.view(1, 1, 3)
-        return (x - shift) / scale
+        whitened = (x - shift) / scale
+        return whitened.detach().numpy()
 
 
 class _ZCAWhiteningTransform(tc.nn.Module):
@@ -113,7 +117,9 @@ class _ZCAWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
-        return tc.matmul(x, self._zca_matrix.T)
+        x = tc.tensor(np.array(x).astype(np.float32)).float()
+        whitened = tc.matmul(x, self._zca_matrix.T)
+        return whitened.detach().numpy()
 
 
 class _IdentityTransform(tc.nn.Module):
