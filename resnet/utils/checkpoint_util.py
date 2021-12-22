@@ -146,7 +146,7 @@ class FrequencyCheckpointStrategy(CheckpointStrategy):
         self._frequency = frequency
 
     def is_eligible(self, global_step, **kwargs) -> bool:
-        return global_step > 0 and global_step % self._frequency
+        return global_step > 0 and global_step % self._frequency == 0
 
 
 class PerformanceCheckpointStrategy(CheckpointStrategy):
