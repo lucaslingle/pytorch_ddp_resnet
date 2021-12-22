@@ -101,7 +101,7 @@ class _ZCAWhiteningTransform(tc.nn.Module):
         super().__init__()
         self._reduction_indices = _format_to_reduction_indices(format)
         self._fitted = False
-        self._matrix = tc.nn.Parameter(
+        self._zca_matrix = tc.nn.Parameter(
             tc.zeros(size=(3,3), dtype=tc.float32), requires_grad=False)
 
     def fit(self, dataset: tc.utils.data.Dataset) -> None:
@@ -125,8 +125,8 @@ class _ZCAWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
-        matrix = self._matrix[None, None, :, :]
-        return tc.matmul(matrix, x)
+        zca_matrix = self._zca_matrix[None, None, :, :]
+        return tc.matmul(zca_matrix, x)
 
 
 class _IdentityTransform(tc.nn.Module):
