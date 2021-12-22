@@ -258,6 +258,10 @@ def get_dataloaders(
             tensor_transform
         ])
 
+        # todo(lucaslingle): add separate composed transform for validation set.
+        #     could simply be whitening transform on cifar,
+        #     but could also be five crop on imagenet for instance.
+
         dataset_train = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
             transform=composed_transform)
