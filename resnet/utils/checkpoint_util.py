@@ -53,16 +53,14 @@ def maybe_load_checkpoint(
         checkpointable: Checkpointable,
         steps: Optional[int]
 ) -> int:
-    try:
-        base_path = checkpoint_dir
-        steps_ = _latest_step(base_path, kind_name) if steps is None else steps
-        path = os.path.join(base_path, _format_name(kind_name, steps_, 'pth'))
-        state_dict = tc.load(path)
-    except FileNotFoundError:
+    base_path = checkpoint_dir
+    steps_ = _latest_step(base_path, kind_name) if steps is None else steps
+    path = os.path.join(base_path, _format_name(kind_name, steps_, 'pth'))
+    if not os.path.exists(path):
         print(f"Bad {kind_name} checkpoint or none at {base_path} with step {steps}.")
         print("Running from scratch.")
         return 0
-
+    state_dict = tc.load(path)
     checkpointable.load_state_dict(state_dict)
     print(f"Loaded {kind_name} checkpoint from {base_path}, with step {steps_}."),
     print("Continuing from checkpoint.")
