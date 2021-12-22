@@ -45,7 +45,8 @@ class _ZeroMeanWhiteningTransform(tc.nn.Module):
             x = np.array(x).astype(np.float32)
             rgb_mean += np.mean(x, axis=self._reduction_indices)
             num_items += 1
-        self._rgb_mean.copy_(tc.tensor(rgb_mean / num_items).float())
+        rgb_mean /= num_items
+        self._rgb_mean.copy_(tc.tensor(rgb_mean).float())
         self._fitted = True
 
     def forward(self, x):
