@@ -125,8 +125,7 @@ class _ZCAWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
-        zca_matrix = self._zca_matrix[None, None, :, :]
-        return tc.matmul(zca_matrix, x)
+        return tc.einsum('cz,hwc->hwz', self._zca_matrix, x)
 
 
 class _IdentityTransform(tc.nn.Module):
