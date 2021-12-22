@@ -9,17 +9,17 @@ from resnet.utils.types_util import Module, Optimizer, Scheduler
 
 
 def get_optimizer(
-        optimizer_cls_name: Optional[str],
+        optimizer_cls_name: str,
         model: Module,
         optimizer_args: Dict[str, Any]
-) -> Optional[Optimizer]:
+) -> Optimizer:
     module = importlib.import_module('torch.optim')
     optimizer_cls = getattr(module, optimizer_cls_name)
     return optimizer_cls(model.parameters(), **optimizer_args)
 
 
 def get_scheduler(
-        scheduler_cls_name: Optional[str],
+        scheduler_cls_name: str,
         optimizer: Optimizer,
         scheduler_args: Dict[str, Any]
 ) -> Optional[Scheduler]:
