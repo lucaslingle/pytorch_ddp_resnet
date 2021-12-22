@@ -131,11 +131,10 @@ def training_loop(
                 global_step=epoch)
 
         val_loss_global = val_metrics_global.get('loss').item()
-        print(f"epoch: {epoch}... loss: {val_loss_global}")
+        if rank == 0:
+            print(f"epoch: {epoch}... loss: {val_loss_global}")
 
         if scheduler and scheduler_step_unit == 'epoch':
-            # during training, the validation set is sharded over multiple gpus,
-            # so we should compute global loss over all shards before stepping.
             step_scheduler(scheduler, val_loss_global)
 
         if checkpoint_strategy.is_eligible(
