@@ -22,19 +22,9 @@ def _get_dataset(dataset_cls_name, **kwargs):
     return dataset(**kwargs)
 
 
-def _format_to_reduction_indices(format: str) -> Tuple[int, int]:
-    return {
-        'CHW': (-2, -1),
-        'HWC': (-3, -2)
-    }[format]
-
-
 class _ZeroMeanWhiteningTransform(tc.nn.Module):
-    def __init__(self, format):
-        assert format in ['CHW', 'HWC']
+    def __init__(self):
         super().__init__()
-        self._format = format
-        self._reduction_indices = _format_to_reduction_indices(format)
         self._fitted = False
         self._rgb_mean = tc.nn.Parameter(
             tc.zeros(size=(3,), dtype=tc.float32),
@@ -45,7 +35,7 @@ class _ZeroMeanWhiteningTransform(tc.nn.Module):
         rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=self._reduction_indices)
+            rgb_mean += np.mean(x, axis=(0, 1))
             num_items += 1
         rgb_mean /= num_items
         self._rgb_mean.copy_(tc.tensor(rgb_mean).float())
@@ -53,16 +43,13 @@ class _ZeroMeanWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
-        idx = -1 if self._format == 'CHW' else 0
-        shift = self._rgb_mean.unsqueeze(idx).unsqueeze(idx)
+        shift = self._rgb_mean.view(1, 1, 3)
         return x - shift
 
 
 class _StandardizeWhiteningTransform(tc.nn.Module):
-    def __init__(self, format):
-        assert format in ['CHW', 'HWC']
+    def __init__(self):
         super().__init__()
-        self._reduction_indices = _format_to_reduction_indices(format)
         self._fitted = False
         self._rgb_mean = tc.nn.Parameter(
             tc.zeros(size=(3,), dtype=tc.float32), requires_grad=False)
@@ -75,14 +62,14 @@ class _StandardizeWhiteningTransform(tc.nn.Module):
         rgb_var = np.zeros(shape=(3,), dtype=np.float32)
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=self._reduction_indices)
+            rgb_mean += np.mean(x, axis=(0,1))
             num_items += 1
         rgb_mean /= num_items
 
+        shift = rgb_mean.reshape([1, 1, 3])
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            rgb_var += np.mean(
-                np.square(x-rgb_mean), axis=self._reduction_indices)
+            rgb_var += np.mean(np.square(x-shift), axis=(0,1))
         rgb_var /= num_items
         rgb_stddev = np.sqrt(rgb_var)
 
@@ -92,17 +79,14 @@ class _StandardizeWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
-        idx = -1 if self._format == 'CHW' else 0
-        shift = self._rgb_mean.unsqueeze(idx).unsqueeze(idx)
-        scale = self._rgb_stddev.unsqueeze(idx).unsqueeze(idx)
+        shift = self._rgb_mean.view(1, 1, 3)
+        scale = self._rgb_stddev.view(1, 1, 3)
         return (x - shift) / scale
 
 
 class _ZCAWhiteningTransform(tc.nn.Module):
-    def __init__(self, format):
-        assert format in ['CHW', 'HWC']
+    def __init__(self):
         super().__init__()
-        self._reduction_indices = _format_to_reduction_indices(format)
         self._fitted = False
         self._zca_matrix = tc.nn.Parameter(
             tc.zeros(size=(3,3), dtype=tc.float32), requires_grad=False)
@@ -113,12 +97,13 @@ class _ZCAWhiteningTransform(tc.nn.Module):
         rgb_cov = np.zeros(shape=(3,3), dtype=np.float32)
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=self._reduction_indices)
+            rgb_mean += np.mean(x, axis=(0,1))
         rgb_mean /= num_items
 
+        shift = rgb_mean.reshape([1, 1, 3])
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            vec = np.mean((x - rgb_mean), axis=self._reduction_indices)
+            vec = np.mean((x - shift), axis=(0,1))
             rgb_cov += np.outer(vec, vec)
         rgb_cov /= num_items
         rgb_cov_sqrt = sp.linalg.sqrtm(rgb_cov)
@@ -142,20 +127,17 @@ class _IdentityTransform(tc.nn.Module):
         return x
 
 
-def _get_whitening_transform(
-        whitening: str, format: str
-) -> Module:
+def _get_whitening_transform(whitening: str) -> Module:
     """
     :param whitening: One of 'zeromean', 'standardize', 'zca', 'none'.
-    :param format: One of 'CHW', 'HWC'.
     :return: Whitening transform function.
     """
     if whitening == 'zeromean':
-        return _ZeroMeanWhiteningTransform(format=format)
+        return _ZeroMeanWhiteningTransform()
     if whitening == 'standardized':
-        return _StandardizeWhiteningTransform(format=format)
+        return _StandardizeWhiteningTransform()
     if whitening == 'zca':
-        return _ZCAWhiteningTransform(format=format)
+        return _ZCAWhiteningTransform()
     if whitening == 'none':
         return _IdentityTransform()
 
@@ -229,8 +211,7 @@ def get_dataloaders(
 
         # get whitening transform and fit it to the data.
         whitening_transform = _get_whitening_transform(
-            whitening=data_aug.get('whitening'),
-            format='HWC')
+            whitening=data_aug.get('whitening'))
         step = maybe_load_checkpoint(
             checkpoint_dir=checkpoint_dir,
             kind_name='whitening',
