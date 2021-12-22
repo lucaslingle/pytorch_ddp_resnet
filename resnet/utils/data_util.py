@@ -11,6 +11,7 @@ import torch as tc
 import torchvision as tv
 from filelock import FileLock
 
+from resnet.utils.checkpoint_util import maybe_load_checkpoint, save_checkpoint
 from resnet.utils.types_util import Module
 
 
@@ -178,6 +179,7 @@ def get_dataloaders(
         data_dir: str,
         dataset_cls_name: str,
         data_aug: Dict[str, Union[int, str]],
+        checkpoint_dir: str,
         local_batch_size: int,
         num_shards: int
 ):
@@ -188,16 +190,31 @@ def get_dataloaders(
             dataset_cls_name, root=data_dir, train=True, download=True,
             transform=None)
 
+        # get whitening transform and fit it to the data.
         whitening_transform = get_whitening_transform(
-            whitening=data_aug.get('whitening'))
-        if True:
-            # todo(lucaslingle):
-            #    make a checkpoint check condition for whitening module.
-            whitening_transform.fit(dataset_train=dataset_train_)
-        else:
-            # load checkpoint
-            raise NotImplementedError
+            whitening=data_aug.get('whitening'),
+            format='HWC')
+        step = maybe_load_checkpoint(
+            checkpoint_dir=checkpoint_dir,
+            kind_name='whitening',
+            checkpointable=whitening_transform,
+            steps=None)
+        if step == 0:
+            if rank == 0:
+                whitening_transform.fit(dataset_train=dataset_train_)
+                save_checkpoint(
+                    checkpoint_dir=checkpoint_dir,
+                    kind_name='whitening',
+                    rank=rank,
+                    checkpointable=whitening_transform,
+                    steps=1)
+            _ = maybe_load_checkpoint(
+                checkpoint_dir=checkpoint_dir,
+                kind_name='whitening',
+                checkpointable=whitening_transform,
+                steps=1)
 
+        # get the other transforms.
         flip_transform = get_flip_transform(
             flip=data_aug.get('flip'))
         padding_transform = get_padding_transform(
@@ -205,11 +222,11 @@ def get_dataloaders(
             pad_type=data_aug.get('pad_type'))
         crop_transform = get_crop_transform(
             crop_size=data_aug.get('crop_size'))
-        tensor_transform = tv.transforms.ToTensor()
-
+        
         # torchvision's native tensor transform scales everything down by 255,
         # which leaves zero padding unaffected. moreover, the whitening ops
         # mathematically commute with this scaling.
+        tensor_transform = tv.transforms.ToTensor()
         composed_transform = tv.transforms.Compose([
             whitening_transform,
             flip_transform,
