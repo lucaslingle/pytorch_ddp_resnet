@@ -36,7 +36,8 @@ def _latest_n_checkpoint_steps(base_path, n=5, kind=''):
 
 
 def _latest_step(base_path, kind=''):
-    return _latest_n_checkpoint_steps(base_path, n=1, kind=kind)[-1]
+    latest_steps = _latest_n_checkpoint_steps(base_path, n=1, kind=kind)
+    return latest_steps[-1] if len(latest_steps) > 0 else None
 
 
 def _clean(base_path, kind, n=5):
