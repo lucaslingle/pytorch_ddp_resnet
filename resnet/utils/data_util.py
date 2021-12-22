@@ -121,10 +121,11 @@ class IdentityTransform(tc.nn.Module):
 
 
 def get_whitening_transform(
-        whitening: str
+        whitening: str, format: str
 ) -> Module:
     """
     :param whitening: one of 'zeromean', 'standardize', 'zca', 'none'.
+    :param format: one of 'CHW', 'HWC'
     :return: Whitening transform function.
     """
     if whitening == 'zeromean':
@@ -132,9 +133,7 @@ def get_whitening_transform(
     if whitening == 'standardized':
         return StandardizeWhiteningTransform()
     if whitening == 'zca':
-        # compute zca matrix over training data
-        # return custom transform that applies it
-        raise NotImplementedError
+        return ZCAWhiteningTransform()
     if whitening == 'none':
         return IdentityTransform()
 
