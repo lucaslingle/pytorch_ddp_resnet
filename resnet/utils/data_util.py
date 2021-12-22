@@ -7,6 +7,7 @@ import os
 import importlib
 
 import numpy as np
+import scipy as sp
 import torch as tc
 import torchvision as tv
 from filelock import FileLock
@@ -104,11 +105,27 @@ class _ZCAWhiteningTransform(tc.nn.Module):
             tc.zeros(size=(3,3), dtype=tc.float32), requires_grad=False)
 
     def fit(self, dataset: tc.utils.data.Dataset) -> None:
-        raise NotImplementedError
+        num_items = 0
+        rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
+        rgb_cov = np.zeros(shape=(3,3), dtype=np.float32)
+        for x, y in dataset:
+            x = np.array(x).astype(np.float32)
+            rgb_mean += np.mean(x, axis=self._reduction_indices)
+        rgb_mean /= num_items
+
+        for x, y in dataset:
+            x = np.array(x).astype(np.float32)
+            vec = np.mean((x - rgb_mean), axis=self._reduction_indices)
+            rgb_cov += np.outer(vec, vec)
+        rgb_cov /= num_items
+        rgb_cov_sqrt = sp.linalg.sqrtm(rgb_cov)
+
+        self._matrix.copy_(tc.tensor(rgb_cov_sqrt).float())
+        self._fitted = True
 
     def forward(self, x):
         assert self._fitted
-        raise NotImplementedError
+        return tc.matmul(self._matrix, x)
 
 
 class _IdentityTransform(tc.nn.Module):
