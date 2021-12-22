@@ -28,7 +28,7 @@ def _format_to_reduction_indices(format: str) -> Tuple[int, int]:
     }[format]
 
 
-class ZeroMeanWhiteningTransform(tc.nn.Module):
+class _ZeroMeanWhiteningTransform(tc.nn.Module):
     def __init__(self, format):
         assert format in ['CHW', 'HWC']
         super().__init__()
@@ -54,7 +54,7 @@ class ZeroMeanWhiteningTransform(tc.nn.Module):
         return x - shift
 
 
-class StandardizeWhiteningTransform(tc.nn.Module):
+class _StandardizeWhiteningTransform(tc.nn.Module):
     def __init__(self, format):
         assert format in ['CHW', 'HWC']
         super().__init__()
@@ -93,7 +93,7 @@ class StandardizeWhiteningTransform(tc.nn.Module):
         return (x - shift) / scale
 
 
-class ZCAWhiteningTransform(tc.nn.Module):
+class _ZCAWhiteningTransform(tc.nn.Module):
     def __init__(self, format):
         assert format in ['CHW', 'HWC']
         super().__init__()
@@ -110,7 +110,7 @@ class ZCAWhiteningTransform(tc.nn.Module):
         raise NotImplementedError
 
 
-class IdentityTransform(tc.nn.Module):
+class _IdentityTransform(tc.nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -121,7 +121,7 @@ class IdentityTransform(tc.nn.Module):
         return x
 
 
-def get_whitening_transform(
+def _get_whitening_transform(
         whitening: str, format: str
 ) -> Module:
     """
@@ -130,16 +130,16 @@ def get_whitening_transform(
     :return: Whitening transform function.
     """
     if whitening == 'zeromean':
-        return ZeroMeanWhiteningTransform(format=format)
+        return _ZeroMeanWhiteningTransform(format=format)
     if whitening == 'standardized':
-        return StandardizeWhiteningTransform(format=format)
+        return _StandardizeWhiteningTransform(format=format)
     if whitening == 'zca':
-        return ZCAWhiteningTransform(format=format)
+        return _ZCAWhiteningTransform(format=format)
     if whitening == 'none':
-        return IdentityTransform()
+        return _IdentityTransform()
 
 
-def get_flip_transform(flip: str) -> Module:
+def _get_flip_transform(flip: str) -> Module:
     """
     :param flip: One of 'horizontal', 'none'.
     :return: Flip transform.
@@ -147,10 +147,10 @@ def get_flip_transform(flip: str) -> Module:
     if flip == 'horizontal':
         return tv.transforms.RandomHorizontalFlip(p=0.5)
     if flip == 'none':
-        return IdentityTransform()
+        return _IdentityTransform()
 
 
-def get_padding_transform(pad_width: int, pad_type: str) -> Module:
+def _get_padding_transform(pad_width: int, pad_type: str) -> Module:
     """
     :param pad_width: Number of pixels to pad each size by.
     :param pad_type: Pne of 'zero', 'mirror', 'none'.
@@ -163,10 +163,10 @@ def get_padding_transform(pad_width: int, pad_type: str) -> Module:
         return tv.transforms.Pad(
             padding=(pad_width, pad_width), fill=0, padding_mode='reflect')
     if pad_type == 'none':
-        return IdentityTransform()
+        return _IdentityTransform()
 
 
-def get_crop_transform(crop_size: int) -> Module:
+def _get_crop_transform(crop_size: int) -> Module:
     """
     :param crop_size: Pixel size to crop to.
     :return: Crop transform.
@@ -207,7 +207,7 @@ def get_dataloaders(
             transform=None)
 
         # get whitening transform and fit it to the data.
-        whitening_transform = get_whitening_transform(
+        whitening_transform = _get_whitening_transform(
             whitening=data_aug.get('whitening'),
             format='HWC')
         step = maybe_load_checkpoint(
@@ -231,12 +231,12 @@ def get_dataloaders(
                 steps=1)
 
         # get the other transforms.
-        flip_transform = get_flip_transform(
+        flip_transform = _get_flip_transform(
             flip=data_aug.get('flip'))
-        padding_transform = get_padding_transform(
+        padding_transform = _get_padding_transform(
             pad_width=data_aug.get('pad_width'),
             pad_type=data_aug.get('pad_type'))
-        crop_transform = get_crop_transform(
+        crop_transform = _get_crop_transform(
             crop_size=data_aug.get('crop_size'))
 
         # torchvision's native tensor transform scales everything down by 255,
