@@ -2,37 +2,31 @@
 Evaluation loop.
 """
 
+from collections import Counter
+
 import torch as tc
+
+from resnet.algos.metrics import compute_losses_and_metrics
 
 
 @tc.no_grad()
 def evaluation_loop(
         classifier,
-        dataloader,
+        dl_test,
         device
 ):
     classifier.eval()
-    summed_loss = 0.
-    summed_acc = 0.
+    summed_metrics = Counter()
     num_batch = 0
-    for x, y in dataloader:
-        x = x.to(device)
-        y = y.to(device)
-
+    for x, y in dl_test:
+        x, y = x.to(device), y.to(device)
         logits = classifier(x)
-        loss = tc.nn.CrossEntropyLoss()(input=logits, target=y)
-        acc = tc.eq(logits.argmax(dim=-1), y).float().mean()
+        metrics = compute_losses_and_metrics(logits=logits, labels=y)
 
-        loss = loss.item()
-        acc = acc.item()
-        summed_loss += loss
-        summed_acc += acc
+        for name in metrics:
+            summed_metrics[name] += metrics.get(name).item()
         num_batch += 1
 
-    mean_loss = summed_loss / num_batch
-    mean_acc = summed_acc / num_batch
-
     return {
-        "loss": mean_loss,
-        "acc": mean_acc
+        k: v / num_batch for k,v in summed_metrics.items()
     }
