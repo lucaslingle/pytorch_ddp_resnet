@@ -129,11 +129,11 @@ def get_whitening_transform(
     :return: Whitening transform function.
     """
     if whitening == 'zeromean':
-        return ZeroMeanWhiteningTransform()
+        return ZeroMeanWhiteningTransform(format=format)
     if whitening == 'standardized':
-        return StandardizeWhiteningTransform()
+        return StandardizeWhiteningTransform(format=format)
     if whitening == 'zca':
-        return ZCAWhiteningTransform()
+        return ZCAWhiteningTransform(format=format)
     if whitening == 'none':
         return IdentityTransform()
 
