@@ -171,7 +171,7 @@ def _get_flip_transform(flip: str) -> Module:
 def _get_padding_transform(pad_width: int, pad_type: str) -> Module:
     """
     :param pad_width: Number of pixels to pad each size by.
-    :param pad_type: Pne of 'zero', 'mirror', 'none'.
+    :param pad_type: One of 'zero', 'mirror', 'none'.
     :return: Padding transform.
     """
     if pad_type == 'zero':
