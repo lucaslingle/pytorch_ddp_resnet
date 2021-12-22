@@ -1,6 +1,6 @@
 .idea/
 data_dir/
-models_dir/*/
+models_dir/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
