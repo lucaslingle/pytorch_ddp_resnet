@@ -97,13 +97,11 @@ def training_loop(
 
             if rank == 0:
                 print(f"global step: {global_step}... loss: {global_loss}")
-
                 for name in global_metrics:
                     writer.add_scalar(
                         tag=f"train/{name}",
                         scalar_value=global_metrics.get(name).item(),
                         global_step=global_step)
-
                 if checkpoint_strategy.is_eligible(
                         unit='batch', global_step=global_step, loss=global_loss):
                     save_checkpoints(
@@ -131,13 +129,11 @@ def training_loop(
 
         if rank == 0:
             print(f"epoch: {epoch}... loss: {val_loss_global}")
-
             for name in val_metrics_global:
                 writer.add_scalar(
                     tag=f"val/{name}",
                     scalar_value=val_metrics_global.get(name).item(),
                     global_step=epoch)
-
             if checkpoint_strategy.is_eligible(
                     unit='epoch', global_step=global_step, loss=val_loss_global):
                 save_checkpoints(
