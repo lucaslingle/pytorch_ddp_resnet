@@ -33,6 +33,7 @@ class _ZeroMeanWhiteningTransform(tc.nn.Module):
     def __init__(self, format):
         assert format in ['CHW', 'HWC']
         super().__init__()
+        self._format = format
         self._reduction_indices = _format_to_reduction_indices(format)
         self._fitted = False
         self._rgb_mean = tc.nn.Parameter(
@@ -52,7 +53,8 @@ class _ZeroMeanWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
-        shift = self._rgb_mean[:, None, None]
+        idx = -1 if self._format == 'CHW' else 0
+        shift = self._rgb_mean.unsqueeze(idx).unsqueeze(idx)
         return x - shift
 
 
@@ -90,8 +92,9 @@ class _StandardizeWhiteningTransform(tc.nn.Module):
 
     def forward(self, x):
         assert self._fitted
-        shift = self._rgb_mean[:, None, None]
-        scale = self._rgb_stddev[:, None, None]
+        idx = -1 if self._format == 'CHW' else 0
+        shift = self._rgb_mean.unsqueeze(idx).unsqueeze(idx)
+        scale = self._rgb_stddev.unsqueeze(idx).unsqueeze(idx)
         return (x - shift) / scale
 
 
