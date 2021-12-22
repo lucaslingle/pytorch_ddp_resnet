@@ -45,12 +45,12 @@ def get_config(args):
     return config
 
 
-def get_shard_spec(mode, batch_size, world_size):
-    if mode == 'train':
-        num_shards = world_size
+def get_shard_spec(config):
+    if config.get('mode') == 'train':
+        num_shards = config.get('world_size')
     else:
         num_shards = 1
-    local_batch_size = batch_size // num_shards
+    local_batch_size = config.get('batch_size') // num_shards
     return {
         "num_shards": num_shards,
         "local_batch_size": local_batch_size
@@ -65,10 +65,7 @@ def setup(rank, config):
         world_size=config.get('world_size'),
         rank=rank)
 
-    shard_spec = get_shard_spec(
-        mode=config.get('mode'),
-        batch_size=config.get('batch_size'),
-        world_size=config.get('world_size'))
+    shard_spec = get_shard_spec(config)
     dl_train, dl_test = get_dataloaders(rank, **config, **shard_spec)
 
     device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
