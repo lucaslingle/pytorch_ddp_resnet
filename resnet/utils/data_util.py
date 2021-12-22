@@ -2,10 +2,11 @@
 Data util.
 """
 
-from typing import Dict, Union
+from typing import Tuple, Dict, Union
 import os
 import importlib
 
+import numpy as np
 import torch as tc
 import torchvision as tv
 from filelock import FileLock
@@ -13,36 +14,128 @@ from filelock import FileLock
 from resnet.utils.types_util import Module
 
 
-def get_dataset(dataset_cls_name, **kwargs):
+def _get_dataset(dataset_cls_name, **kwargs):
     module = importlib.import_module('torchvision.datasets')
     dataset = getattr(module, dataset_cls_name)
     return dataset(**kwargs)
 
 
+def _format_to_reduction_indices(format: str) -> Tuple[int, int]:
+    return {
+        'CHW': (-2, -1),
+        'HWC': (-3, -2)
+    }[format]
+
+
+class ZeroMeanWhiteningTransform(tc.nn.Module):
+    def __init__(self, format):
+        assert format in ['CHW', 'HWC']
+        super().__init__()
+        self._reduction_indices = _format_to_reduction_indices(format)
+        self._fitted = False
+        self._rgb_mean = tc.nn.Parameter(
+            tc.zeros(size=(3,), dtype=tc.float32),
+            requires_grad=False)
+
+    def fit(self, dataset: tc.utils.data.Dataset) -> None:
+        num_items = 0
+        rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
+        for x, y in dataset:
+            x = np.array(x).astype(np.float32)
+            rgb_mean += np.mean(x, axis=(-2, -1))
+            num_items += 1
+        self._rgb_mean.copy_(tc.tensor(rgb_mean / num_items).float())
+        self._fitted = True
+
+    def forward(self, x):
+        assert self._fitted
+        shift = self._rgb_mean[:, None, None]
+        return x - shift
+
+
+class StandardizeWhiteningTransform(tc.nn.Module):
+    def __init__(self, format):
+        assert format in ['CHW', 'HWC']
+        super().__init__()
+        self._reduction_indices = _format_to_reduction_indices(format)
+        self._fitted = False
+        self._rgb_mean = tc.nn.Parameter(
+            tc.zeros(size=(3,), dtype=tc.float32), requires_grad=False)
+        self._rgb_stddev = tc.nn.Parameter(
+            tc.ones(size=(3,), dtype=tc.float32), requires_grad=False)
+
+    def fit(self, dataset: tc.utils.data.Dataset) -> None:
+        num_items = 0
+        rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
+        rgb_var = np.zeros(shape=(3,), dtype=np.float32)
+        for x, y in dataset:
+            x = np.array(x).astype(np.float32)
+            rgb_mean += np.mean(x, axis=(0, 1))
+            num_items += 1
+        rgb_mean /= num_items
+
+        for x, y in dataset:
+            x = np.array(x).astype(np.float32)
+            rgb_var += np.mean(np.square(x-rgb_mean), axis=(0, 1))
+        rgb_var /= num_items
+        rgb_stddev = np.sqrt(rgb_var)
+
+        self._rgb_mean.copy_(tc.tensor(rgb_mean).float())
+        self._rgb_stddev.copy_(tc.tensor(rgb_stddev).float())
+        self._fitted = True
+
+    def forward(self, x):
+        assert self._fitted
+        shift = self._rgb_mean[:, None, None]
+        scale = self._rgb_stddev[:, None, None]
+        return (x - shift) / scale
+
+
+class ZCAWhiteningTransform(tc.nn.Module):
+    def __init__(self, format):
+        assert format in ['CHW', 'HWC']
+        super().__init__()
+        self._reduction_indices = _format_to_reduction_indices(format)
+        self._fitted = False
+        self._matrix = tc.nn.Parameter(
+            tc.zeros(size=(3,3), dtype=tc.float32), requires_grad=False)
+
+    def fit(self, dataset: tc.utils.data.Dataset) -> None:
+        raise NotImplementedError
+
+    def forward(self, x):
+        assert self._fitted
+        raise NotImplementedError
+
+
+class IdentityTransform(tc.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def fit(self, dataset: tc.utils.data.Dataset) -> None:
+        return None
+
+    def forward(self, x):
+        return x
+
+
 def get_whitening_transform(
-        whitening: str,
-        dataset_train: tc.utils.data.Dataset
+        whitening: str
 ) -> Module:
     """
-    :param whitening: one of 'meanzero', 'standardized', 'zca', 'none'.
-    :param dataset_train: training dataset without preprocessing.
+    :param whitening: one of 'zeromean', 'standardize', 'zca', 'none'.
     :return: Whitening transform function.
     """
-    if whitening == 'meanzero':
-        # compute mean over training data
-        # return transform that subtracts it
-        raise NotImplementedError
+    if whitening == 'zeromean':
+        return ZeroMeanWhiteningTransform()
     if whitening == 'standardized':
-        # compute mean and stddev over training data
-        # return composed transform that normalizes data
-        raise NotImplementedError
+        return StandardizeWhiteningTransform()
     if whitening == 'zca':
         # compute zca matrix over training data
         # return custom transform that applies it
         raise NotImplementedError
     if whitening == 'none':
-        #return IdentityTransform() # todo: implement this class
-        raise NotImplementedError
+        return IdentityTransform()
 
 
 def get_flip_transform(flip: str) -> Module:
@@ -53,8 +146,7 @@ def get_flip_transform(flip: str) -> Module:
     if flip == 'horizontal':
         return tv.transforms.RandomHorizontalFlip(p=0.5)
     if flip == 'none':
-        #return IdentityTransform() # todo: implement this class
-        raise NotImplementedError
+        return IdentityTransform()
 
 
 def get_padding_transform(pad_width: int, pad_type: str) -> Module:
@@ -70,8 +162,7 @@ def get_padding_transform(pad_width: int, pad_type: str) -> Module:
         return tv.transforms.Pad(
             padding=(pad_width, pad_width), fill=0, padding_mode='reflect')
     if pad_type == 'none':
-        # return IdentityTransform() # todo: implement this class
-        raise NotImplementedError
+        return IdentityTransform()
 
 
 def get_crop_transform(crop_size: int) -> Module:
@@ -93,13 +184,20 @@ def get_dataloaders(
     os.makedirs(data_dir, exist_ok=True)
     lock_fp = os.path.join(data_dir, f"{dataset_cls_name}.lock")
     with FileLock(lock_fp):
-        dataset_train_ = get_dataset(
+        dataset_train_ = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
             transform=None)
 
         whitening_transform = get_whitening_transform(
-            whitening=data_aug.get('whitening'),
-            dataset_train=dataset_train_)
+            whitening=data_aug.get('whitening'))
+        if True:
+            # todo(lucaslingle):
+            #    make a checkpoint check condition for whitening module.
+            whitening_transform.fit(dataset_train=dataset_train_)
+        else:
+            # load checkpoint
+            raise NotImplementedError
+
         flip_transform = get_flip_transform(
             flip=data_aug.get('flip'))
         padding_transform = get_padding_transform(
@@ -108,6 +206,10 @@ def get_dataloaders(
         crop_transform = get_crop_transform(
             crop_size=data_aug.get('crop_size'))
         tensor_transform = tv.transforms.ToTensor()
+
+        # torchvision's native tensor transform scales everything down by 255,
+        # which leaves zero padding unaffected. moreover, the whitening ops
+        # mathematically commute with this scaling.
         composed_transform = tv.transforms.Compose([
             whitening_transform,
             flip_transform,
@@ -116,12 +218,12 @@ def get_dataloaders(
             tensor_transform
         ])
 
-        dataset_train = tv.datasets.FashionMNIST(
-            root=data_dir, train=True, download=True,
+        dataset_train = _get_dataset(
+            dataset_cls_name, root=data_dir, train=True, download=True,
             transform=composed_transform)
 
-        dataset_test = tv.datasets.FashionMNIST(
-            root=data_dir, train=False, download=True,
+        dataset_test = _get_dataset(
+            dataset_cls_name, root=data_dir, train=False, download=True,
             transform=composed_transform)
 
     if num_shards > 1:
