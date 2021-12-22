@@ -124,8 +124,8 @@ def get_whitening_transform(
         whitening: str, format: str
 ) -> Module:
     """
-    :param whitening: one of 'zeromean', 'standardize', 'zca', 'none'.
-    :param format: one of 'CHW', 'HWC'
+    :param whitening: One of 'zeromean', 'standardize', 'zca', 'none'.
+    :param format: One of 'CHW', 'HWC'.
     :return: Whitening transform function.
     """
     if whitening == 'zeromean':
@@ -140,8 +140,8 @@ def get_whitening_transform(
 
 def get_flip_transform(flip: str) -> Module:
     """
-    :param flip: one of 'horizontal', 'none'
-    :return: flip transform.
+    :param flip: One of 'horizontal', 'none'.
+    :return: Flip transform.
     """
     if flip == 'horizontal':
         return tv.transforms.RandomHorizontalFlip(p=0.5)
@@ -151,9 +151,9 @@ def get_flip_transform(flip: str) -> Module:
 
 def get_padding_transform(pad_width: int, pad_type: str) -> Module:
     """
-    :param pad_width: number of pixels to pad each size by.
-    :param pad_type: one of 'zero', 'mirror', 'none'.
-    :return: padding transform.
+    :param pad_width: Number of pixels to pad each size by.
+    :param pad_type: Pne of 'zero', 'mirror', 'none'.
+    :return: Padding transform.
     """
     if pad_type == 'zero':
         return tv.transforms.Pad(
@@ -167,8 +167,8 @@ def get_padding_transform(pad_width: int, pad_type: str) -> Module:
 
 def get_crop_transform(crop_size: int) -> Module:
     """
-    :param crop_size: pixel size to crop to.
-    :return: crop transform.
+    :param crop_size: Pixel size to crop to.
+    :return: Crop transform.
     """
     return tv.transforms.RandomCrop(size=(crop_size, crop_size))
 
