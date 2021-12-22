@@ -25,7 +25,7 @@ def create_argparser():
     parser.add_argument("--mode", choices=['train', 'eval'], default='train')
     parser.add_argument("--models_dir", type=str, default='models_dir')
     parser.add_argument("--run_name", type=str, default='default_hparams')
-    parser.add_argument("--data_dir", type=str, default="data_dir")
+    parser.add_argument("--data_dir", type=str, default='data_dir')
     return parser
 
 
