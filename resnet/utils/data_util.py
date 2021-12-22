@@ -42,7 +42,7 @@ class ZeroMeanWhiteningTransform(tc.nn.Module):
         rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=(-2, -1))
+            rgb_mean += np.mean(x, axis=self._reduction_indices)
             num_items += 1
         self._rgb_mean.copy_(tc.tensor(rgb_mean / num_items).float())
         self._fitted = True
@@ -70,13 +70,14 @@ class StandardizeWhiteningTransform(tc.nn.Module):
         rgb_var = np.zeros(shape=(3,), dtype=np.float32)
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=(0, 1))
+            rgb_mean += np.mean(x, axis=self._reduction_indices)
             num_items += 1
         rgb_mean /= num_items
 
         for x, y in dataset:
             x = np.array(x).astype(np.float32)
-            rgb_var += np.mean(np.square(x-rgb_mean), axis=(0, 1))
+            rgb_var += np.mean(
+                np.square(x-rgb_mean), axis=self._reduction_indices)
         rgb_var /= num_items
         rgb_stddev = np.sqrt(rgb_var)
 
