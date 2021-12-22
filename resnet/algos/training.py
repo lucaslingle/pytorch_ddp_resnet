@@ -110,7 +110,6 @@ def training_loop(
                             'optimizer': optimizer,
                             'scheduler': scheduler
                         },
-                        rank=rank,
                         steps=global_step+1)
 
             global_step += 1

@@ -72,16 +72,14 @@ def save_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
         checkpointable: Checkpointable,
-        rank: int,
         steps: int
 ) -> None:
-    if rank == 0:
-        base_path = checkpoint_dir
-        os.makedirs(base_path, exist_ok=True)
-        path = os.path.join(base_path, _format_name(kind_name, steps, 'pth'))
-        state_dict = checkpointable.state_dict()
-        tc.save(state_dict, path)
-        _clean(base_path, kind_name, n=5)
+    base_path = checkpoint_dir
+    os.makedirs(base_path, exist_ok=True)
+    path = os.path.join(base_path, _format_name(kind_name, steps, 'pth'))
+    state_dict = checkpointable.state_dict()
+    tc.save(state_dict, path)
+    _clean(base_path, kind_name, n=5)
 
 
 def maybe_load_checkpoints(
@@ -114,7 +112,6 @@ def maybe_load_checkpoints(
 def save_checkpoints(
         checkpoint_dir: str,
         checkpointables: Dict[str, Optional[Checkpointable]],
-        rank: int,
         steps: int
 ) -> None:
     """
@@ -131,5 +128,4 @@ def save_checkpoints(
                 checkpoint_dir=checkpoint_dir,
                 kind_name=kind_name,
                 checkpointable=checkpointable,
-                rank=rank,
                 steps=steps)

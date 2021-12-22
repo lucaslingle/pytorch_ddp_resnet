@@ -234,15 +234,12 @@ def get_dataloaders(
             checkpointable=whitening_transform,
             steps=None)
         if step == 0:
-            if rank == 0:
-                whitening_transform.fit(dataset_train=dataset_train_)
-                save_checkpoint(
-                    checkpoint_dir=checkpoint_dir,
-                    kind_name='whitening',
-                    rank=rank,
-                    checkpointable=whitening_transform,
-                    steps=1)
-            _ = maybe_load_checkpoint(
+            # file will stay locked til one process finishes doing everything.
+            # that process will fit the whitening transform,
+            # and the other processes will load it later,
+            # in which case the step will not be zero anymore.
+            whitening_transform.fit(dataset_train=dataset_train_)
+            save_checkpoint(
                 checkpoint_dir=checkpoint_dir,
                 kind_name='whitening',
                 checkpointable=whitening_transform,
