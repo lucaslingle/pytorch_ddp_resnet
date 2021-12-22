@@ -68,12 +68,13 @@ def setup(rank, config):
     shard_spec = get_shard_spec(
         mode=config.get('mode'),
         batch_size=config.get('batch_size'),
-        world_size=config.get('world_size')
-    )
+        world_size=config.get('world_size'))
     dl_train, dl_test = get_dataloaders(
+        rank=rank,
         data_dir=config.get('data_dir'),
-        dataset_name=config.get('dataset_name'),
+        dataset_cls_name=config.get('dataset_cls_name'),
         data_aug=config.get('data_aug'),
+        checkpoint_dir=config.get('checkpoint_dir'),
         local_batch_size=shard_spec.get('local_batch_size'),
         num_shards=shard_spec.get('num_shards'))
 
