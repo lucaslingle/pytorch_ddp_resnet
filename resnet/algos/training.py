@@ -123,15 +123,14 @@ def training_loop(
         epoch = (global_step // len(dl_train))
         val_metrics = evaluation_loop(classifier, dl_test, device)
         val_metrics_global = global_means(val_metrics)
-
-        for name in val_metrics_global:
-            writer.add_scalar(
-                tag=f"val/{name}",
-                scalar_value=val_metrics_global.get(name).item(),
-                global_step=epoch)
-
         val_loss_global = val_metrics_global.get('loss').item()
+
         if rank == 0:
+            for name in val_metrics_global:
+                writer.add_scalar(
+                    tag=f"val/{name}",
+                    scalar_value=val_metrics_global.get(name).item(),
+                    global_step=epoch)
             print(f"epoch: {epoch}... loss: {val_loss_global}")
 
         if scheduler and scheduler_step_unit == 'epoch':
