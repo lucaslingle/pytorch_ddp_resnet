@@ -118,11 +118,11 @@ def training_loop(
             if done():
                 break
 
-        val_metrics = evaluation_loop(classifier, dl_test, device)
-        val_metrics_global = global_means(val_metrics)
-        epoch = (global_step // len(dl_train))
         # todo(lucaslingle): use something more reliable to estimate epoch,
         #  see warning at link https://pytorch.org/docs/stable/data.html
+        epoch = (global_step // len(dl_train))
+        val_metrics = evaluation_loop(classifier, dl_test, device)
+        val_metrics_global = global_means(val_metrics)
 
         for name in val_metrics_global:
             writer.add_scalar(
