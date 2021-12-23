@@ -254,7 +254,6 @@ def get_dataloaders(
         for transform_cls_name, transform_kwargs in data_aug.items():
             # we update dataset with new transforms because there could be
             # multiple FittedTransforms whose fitting process depends on inputs.
-            # (note download=True is non-forcing, so only occurs first time.)
             dataset_train_ = _get_dataset(
                 dataset_cls_name, root=data_dir, train=True, download=True,
                 transform=tv.transforms.Compose(transforms_train.values()))
