@@ -132,7 +132,7 @@ class ZCAWhiteningTransform(FittableTransform):
 
         item_count = 1
         for x, y in dataset:
-            x = x.reshape(-1, 1)
+            x = x.reshape(-1)
             vec = (x - mean)
             cov *= (item_count - 1) / item_count
             cov += tc.outer(vec, vec) / item_count
@@ -144,8 +144,9 @@ class ZCAWhiteningTransform(FittableTransform):
 
     def forward(self, x):
         assert self._fitted
-        whitened = tc.matmul(self._zca_matrix, x.reshape(-1, 1))
-        return whitened.reshape(self._data_shape)
+        flat_white = tc.matmul(self._zca_matrix, x.reshape(-1))
+        whitened = flat_white.reshape(self._data_shape)
+        return whitened
 
 
 class FlipTransform(Transform):
