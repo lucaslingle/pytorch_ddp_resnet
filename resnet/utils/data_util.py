@@ -9,8 +9,6 @@ import math
 import abc
 from collections import OrderedDict
 
-import numpy as np
-import scipy as sp
 import torch as tc
 import torchvision as tv
 from filelock import FileLock
