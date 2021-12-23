@@ -5,8 +5,8 @@ Transform util.
 from typing import List
 import abc
 import math
-import PIL
 
+import PIL
 import torch as tc
 import torchvision as tv
 
