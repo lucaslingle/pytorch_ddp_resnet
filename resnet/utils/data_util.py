@@ -2,19 +2,21 @@
 Data util.
 """
 
-from typing import Tuple, Dict, Union, Any
+from typing import Tuple, Dict, Union, Any, List
 import os
 import importlib
+import math
+import abc
+from collections import OrderedDict
 
 import numpy as np
 import scipy as sp
 import torch as tc
 import torchvision as tv
 from filelock import FileLock
-import PIL
 
 from resnet.utils.checkpoint_util import maybe_load_checkpoint, save_checkpoint
-from resnet.utils.types_util import Module, Dataloader
+from resnet.utils.types_util import Dataset, Dataloader
 
 
 def _get_dataset(dataset_cls_name, **kwargs):
@@ -23,165 +25,183 @@ def _get_dataset(dataset_cls_name, **kwargs):
     return dataset(**kwargs)
 
 
-class _ZeroMeanWhiteningTransform(tc.nn.Module):
-    def __init__(self):
+class Transform(abc.ABC, tc.nn.Module):
+    def __init__(self, data_shape):
         super().__init__()
-        self.register_buffer('_fitted', tc.tensor(False))
-        self._rgb_mean = tc.nn.Parameter(
-            tc.zeros(size=(3,), dtype=tc.float32),
+        self._data_shape = data_shape
+
+    @property
+    def output_shape(self) -> List[int]:
+        return list(self._data_shape)
+
+    @abc.abstractmethod
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
+        raise NotImplementedError
+
+
+class FittableTransform(abc.ABC, Transform):
+    @abc.abstractmethod
+    def fit(self, dataset: Dataset) -> None:
+        raise NotImplementedError
+
+
+class ZeroMeanWhiteningTransform(FittableTransform):
+    def __init__(self, data_shape):
+        super().__init__(data_shape)
+        self._image_mean = tc.nn.Parameter(
+            tc.zeros(size=data_shape, dtype=tc.float32),
             requires_grad=False)
+        self.register_buffer('_fitted', tc.tensor(False))
 
-    def fit(self, dataset: tc.utils.data.Dataset) -> None:
-        num_items = 0
-        rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
+    def fit(self, dataset: Dataset) -> None:
+        mean = tc.zeros(size=self._data_shape, dtype=tc.float32)
+
+        item_count = 1
         for x, y in dataset:
-            x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=(0, 1))
-            num_items += 1
-        rgb_mean /= num_items
-        self._rgb_mean.copy_(tc.tensor(rgb_mean).float())
+            mean *= (item_count-1) / item_count
+            mean += x / item_count
+            item_count += 1
+
+        self._image_mean.copy_(mean)
         self.register_buffer('_fitted', tc.tensor(True))
 
     def forward(self, x):
         assert self._fitted
-        x = tc.tensor(np.array(x).astype(np.float32)).float()
-        shift = self._rgb_mean.reshape(1, 1, 3)
-        whitened = (x - shift)
-        return PIL.Image.fromarray(whitened.detach().numpy().astype(np.uint8))
+        whitened = x - self._image_mean
+        return whitened
 
 
-class _StandardizeWhiteningTransform(tc.nn.Module):
-    def __init__(self):
-        super().__init__()
+class StandardizeWhiteningTransform(FittableTransform):
+    def __init__(self, data_shape):
+        super().__init__(data_shape)
+        self._image_mean = tc.nn.Parameter(
+            tc.zeros(size=data_shape, dtype=tc.float32), requires_grad=False)
+        self._image_stddev = tc.nn.Parameter(
+            tc.ones(size=data_shape, dtype=tc.float32), requires_grad=False)
         self.register_buffer('_fitted', tc.tensor(False))
-        self._rgb_mean = tc.nn.Parameter(
-            tc.zeros(size=(3,), dtype=tc.float32), requires_grad=False)
-        self._rgb_stddev = tc.nn.Parameter(
-            tc.ones(size=(3,), dtype=tc.float32), requires_grad=False)
 
-    def fit(self, dataset: tc.utils.data.Dataset) -> None:
-        num_items = 0
-        rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
-        rgb_var = np.zeros(shape=(3,), dtype=np.float32)
+    def fit(self, dataset: Dataset) -> None:
+        mean = tc.zeros(size=self._data_shape, dtype=tc.float32)
+        var = tc.zeros(size=self._data_shape, dtype=tc.float32)
+
+        item_count = 1
         for x, y in dataset:
-            x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=(0,1))
-            num_items += 1
-        rgb_mean /= num_items
+            mean *= (item_count - 1) / item_count
+            mean += x / item_count
+            item_count += 1
 
-        shift = rgb_mean.reshape([1, 1, 3])
+        item_count = 1
         for x, y in dataset:
-            x = np.array(x).astype(np.float32)
-            rgb_var += np.mean(np.square(x-shift), axis=(0,1))
-        rgb_var /= num_items
-        rgb_stddev = np.sqrt(rgb_var)
+            var *= (item_count - 1) / item_count
+            var += np.square(x-mean) / item_count
+            item_count += 1
+        stddev = np.sqrt(var)
 
-        self._rgb_mean.copy_(tc.tensor(rgb_mean).float())
-        self._rgb_stddev.copy_(tc.tensor(rgb_stddev).float())
+        self._image_mean.copy_(mean)
+        self._image_stddev.copy_(stddev)
         self.register_buffer('_fitted', tc.tensor(True))
 
     def forward(self, x):
         assert self._fitted
-        x = tc.tensor(np.array(x).astype(np.float32)).float()
-        shift = self._rgb_mean.reshape(1, 1, 3)
-        scale = self._rgb_stddev.reshape(1, 1, 3)
-        whitened = (x - shift) / scale
-        return PIL.Image.fromarray(whitened.detach().numpy().astype(np.uint8))
+        whitened = (x - self._image_mean) / self._image_stddev
+        return whitened
 
 
-class _ZCAWhiteningTransform(tc.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.register_buffer('_fitted', tc.tensor(False))
+class ZCAWhiteningTransform(FittableTransform):
+    def __init__(self, data_shape):
+        super().__init__(data_shape)
+        self._data_dim = math.prod(data_shape)
         self._zca_matrix = tc.nn.Parameter(
-            tc.zeros(size=(3,3), dtype=tc.float32), requires_grad=False)
+            tc.zeros(size=(self._data_dim, self._data_dim), dtype=tc.float32),
+            requires_grad=False)
+        self.register_buffer('_fitted', tc.tensor(False))
 
-    def fit(self, dataset: tc.utils.data.Dataset) -> None:
-        num_items = 0
-        rgb_mean = np.zeros(shape=(3,), dtype=np.float32)
-        rgb_cov = np.zeros(shape=(3,3), dtype=np.float32)
+    def fit(self, dataset: Dataset) -> None:
+        mean = tc.zeros(size=(self._data_dim,), dtype=tc.float32)
+        cov = tc.zeros(size=(self._data_dim, self._data_dim), dtype=tc.float32)
+
+        item_count = 1
         for x, y in dataset:
-            x = np.array(x).astype(np.float32)
-            rgb_mean += np.mean(x, axis=(0,1))
-        rgb_mean /= num_items
+            x = np.array(x).astype(np.float32).reshape(-1)
+            mean *= (item_count - 1) / item_count
+            mean += x / item_count
+            item_count += 1
 
-        shift = rgb_mean.reshape([1, 1, 3])
+        item_count = 1
         for x, y in dataset:
-            x = np.array(x).astype(np.float32)
-            vec = np.mean((x - shift), axis=(0,1))
-            rgb_cov += np.outer(vec, vec)
-        rgb_cov /= num_items
-        rgb_cov_sqrt = sp.linalg.sqrtm(rgb_cov)
+            x = np.array(x).astype(np.float32).reshape(-1)
+            vec = (x - mean)
+            cov *= (item_count - 1) / item_count
+            cov += np.outer(vec, vec) / item_count
+            item_count += 1
+        zca_matrix = sp.linalg.sqrtm(cov)
 
-        self._zca_matrix.copy_(tc.tensor(rgb_cov_sqrt).float())
+        self._zca_matrix.copy_(zca_matrix)
         self.register_buffer('_fitted', tc.tensor(True))
 
     def forward(self, x):
         assert self._fitted
-        x = tc.tensor(np.array(x).astype(np.float32)).float()
-        whitened = tc.matmul(x, self._zca_matrix.T)
-        return PIL.Image.fromarray(whitened.detach().numpy().astype(np.uint8))
+        flat_white = tc.matmul(self._zca_matrix, x.reshape(-1, 1))
+        whitened = flat_white.reshape(self._data_shape)
+        return whitened
 
 
-class _IdentityTransform(tc.nn.Module):
-    def __init__(self):
-        super().__init__()
+class FlipTransform(Transform):
+    def __init__(self, data_shape, p):
+        super().__init__(data_shape)
+        self._p = p
 
-    def fit(self, dataset: tc.utils.data.Dataset) -> None:
-        return None
-
-    def forward(self, x):
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
+        probs = tc.tensor([1-self._p, self._p]).float()
+        flip = tc.distributions.Categorical(probs=probs).sample().bool().item()
+        if flip:
+            return tc.flip(x, dims=(2,))
         return x
 
 
-def _get_whitening_transform(whitening: str) -> Module:
-    """
-    :param whitening: One of 'zeromean', 'standardize', 'zca', 'none'.
-    :return: Whitening transform function.
-    """
-    if whitening == 'zeromean':
-        return _ZeroMeanWhiteningTransform()
-    if whitening == 'standardized':
-        return _StandardizeWhiteningTransform()
-    if whitening == 'zca':
-        return _ZCAWhiteningTransform()
-    if whitening == 'none':
-        return _IdentityTransform()
+class PaddingTransform(Transform):
+    def __init__(self, data_shape, pad_size, pad_type):
+        assert pad_type in ['zero', 'mirror']
+        super().__init__(data_shape)
+        self._pad_size = pad_size
+        self._pad_type = pad_type
+
+    @property
+    def output_shape(self) -> List[int]:
+        c, h, w = self._data_shape
+        h_new, w_new = map(lambda x: x + 2 * self._pad_size, [h, w])
+        return [c, h_new, w_new]
+
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
+        pad = tuple(self._pad_size for _ in range(4))
+        if self._pad_type == 'mirror':
+            return tc.nn.functional.pad(x, pad=pad, mode='reflect')
+        elif self._pad_type == 'zero':
+            return tc.nn.functional.pad(x, pad=pad, mode='constant', value=0.)
 
 
-def _get_flip_transform(flip: str) -> Module:
-    """
-    :param flip: One of 'horizontal', 'none'.
-    :return: Flip transform.
-    """
-    if flip == 'horizontal':
-        return tv.transforms.RandomHorizontalFlip(p=0.5)
-    if flip == 'none':
-        return _IdentityTransform()
+class RandomCropTransform(Transform):
+    def __init__(self, data_shape, crop_size):
+        super().__init__(data_shape)
+        self._crop_size = crop_size
+
+    @property
+    def output_shape(self) -> List[int]:
+        c, h, w = self._data_shape
+        return [c, self._crop_size, self._crop_size]
+
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
+        t_index_max = self._data_shape[1]-self._crop_size
+        l_index_max = self._data_shape[2]-self._crop_size
+        t_idx = tc.randint(low=0, high=t_index_max+1, size=(1,)).item()
+        l_idx = tc.randint(low=0, high=l_index_max+1, size=(1,)).item()
+        return x[:, t_idx:t_idx+self._crop_size, l_idx:l_idx+self._crop_size]
 
 
-def _get_padding_transform(pad_width: int, pad_type: str) -> Module:
-    """
-    :param pad_width: Number of pixels to pad each size by.
-    :param pad_type: One of 'zero', 'mirror', 'none'.
-    :return: Padding transform.
-    """
-    if pad_type == 'zero':
-        return tv.transforms.Pad(
-            padding=(pad_width, pad_width), fill=0, padding_mode='constant')
-    if pad_type == 'mirror':
-        return tv.transforms.Pad(
-            padding=(pad_width, pad_width), fill=0, padding_mode='reflect')
-    if pad_type == 'none':
-        return _IdentityTransform()
-
-
-def _get_crop_transform(crop_size: int) -> Module:
-    """
-    :param crop_size: Pixel size to crop to.
-    :return: Crop transform.
-    """
-    return tv.transforms.RandomCrop(size=(crop_size, crop_size))
+def _get_transform(transform_cls_name, **kwargs):
+    module = importlib.import_module('resnet.utils.data_util')
+    cls = getattr(module, transform_cls_name)
+    return cls(**kwargs)
 
 
 def get_dataloaders(
@@ -211,63 +231,47 @@ def get_dataloaders(
     """
     os.makedirs(data_dir, exist_ok=True)
     lock_fp = os.path.join(data_dir, f"{dataset_cls_name}.lock")
+
+    # critical section for multiple processes, handled via file-based lock.
     with FileLock(lock_fp):
-        dataset_train_ = _get_dataset(
-            dataset_cls_name, root=data_dir, train=True, download=True,
-            transform=None)
+        transforms_train = OrderedDict()
+        transforms_train['ToTensorTransform'] = tv.transforms.ToTensor()
 
-        # get whitening transform and fit it to the data.
-        whitening_transform = _get_whitening_transform(
-            whitening=data_aug.get('whitening'))
-        step = maybe_load_checkpoint(
-            checkpoint_dir=checkpoint_dir,
-            kind_name='whitening',
-            checkpointable=whitening_transform,
-            steps=None)
-        if step == 0:
-            # file will stay locked til one process finishes doing everything.
-            # that process will fit the whitening transform,
-            # and the other processes will load it later,
-            # in which case the step will not be zero anymore.
-            whitening_transform.fit(dataset=dataset_train_)
-            save_checkpoint(
-                checkpoint_dir=checkpoint_dir,
-                kind_name='whitening',
-                checkpointable=whitening_transform,
-                steps=1)
+        for transform_cls_name, transform_kwargs in data_aug.items():
+            dataset_train_ = _get_dataset(
+                dataset_cls_name, root=data_dir, train=True, download=True,
+                transform=tc.nn.Sequential(*transforms_train.values()))
 
-        # get the other transforms.
-        flip_transform = _get_flip_transform(
-            flip=data_aug.get('flip'))
-        padding_transform = _get_padding_transform(
-            pad_width=data_aug.get('pad_width'),
-            pad_type=data_aug.get('pad_type'))
-        crop_transform = _get_crop_transform(
-            crop_size=data_aug.get('crop_size'))
+            transform = _get_transform(
+                transform_cls_name=transform_cls_name,
+                data_shape=dataset_train_.data[0].shape,
+                kwargs=transform_kwargs)  # todo(lucaslingle): do kwargs the right way, pycharm is complaining if i dont do this so this is temp fix
+            transforms_train[transform_cls_name] = transform
 
-        # torchvision's native tensor transform scales everything down by 255,
-        # which leaves zero padding unaffected. moreover, the whitening ops
-        # mathematically commute with this scaling.
-        tensor_transform = tv.transforms.ToTensor()
-        composed_transform = tv.transforms.Compose([
-            whitening_transform,
-            flip_transform,
-            padding_transform,
-            crop_transform,
-            tensor_transform
-        ])
+            if isinstance(transform, FittableTransform):
+                step = maybe_load_checkpoint(
+                    checkpoint_dir=checkpoint_dir,
+                    kind_name=transform_cls_name.lower(),
+                    checkpointable=transform,
+                    steps=None)
+                if step == 0:
+                    transform.fit(dataset=dataset_train_)
+                    save_checkpoint(
+                        checkpoint_dir=checkpoint_dir,
+                        kind_name=transform_cls_name.lower(),
+                        checkpointable=transform_kwargs,
+                        steps=1)
 
         # todo(lucaslingle): add separate composed transform for validation set.
         #     could simply be whitening transform on cifar,
         #     but could also be five crop on imagenet for instance.
-
         dataset_train = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
-            transform=composed_transform)
+            transform=tc.nn.Sequential(*transforms_train.values()))
 
         dataset_test = _get_dataset(
             dataset_cls_name, root=data_dir, train=False, download=True,
-            transform=composed_transform)
+            transform=tc.nn.Sequential(*transforms_train.values()))
 
     if num_shards > 1:
         sampler_train = tc.utils.data.DistributedSampler(
