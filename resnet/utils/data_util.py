@@ -134,10 +134,10 @@ class ZCAWhiteningTransform(FittableTransform):
 
         item_count = 1
         for x, y in dataset:
-            x = x.reshape(-1)
+            x = x.reshape(-1, 1)
             vec = (x - mean)
             cov *= (item_count - 1) / item_count
-            cov += np.outer(vec, vec) / item_count
+            cov += tc.outer(vec, vec) / item_count
             item_count += 1
         zca_matrix = self.sqrtm(cov)
 
