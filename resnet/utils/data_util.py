@@ -19,17 +19,10 @@ from resnet.utils.checkpoint_util import maybe_load_checkpoint, save_checkpoint
 from resnet.utils.types_util import Dataset, Dataloader
 
 
-def _get_dataset(dataset_cls_name, **kwargs):
-    module = importlib.import_module('torchvision.datasets')
-    dataset_cls = getattr(module, dataset_cls_name)
-    if 'split' in inspect.signature(dataset_cls).parameters:
-        kwargs['split'] = 'train' if kwargs['train'] else 'val'
-        del kwargs['train']
-    if dataset_cls_name == 'ImageNet':
-        del kwargs['download']
-        # todo(lucaslingle):
-        #    check if it's not downloaded, and then download imagenet here
-    return dataset_cls(**kwargs)
+def _get_transform(transform_cls_name, **kwargs):
+    module = importlib.import_module('resnet.utils.data_util')
+    cls = getattr(module, transform_cls_name)
+    return cls(**kwargs)
 
 
 class Transform(tc.nn.Module, abc.ABC):
@@ -220,10 +213,17 @@ class ToTensorTransform(Transform):
         return self._transform(x)
 
 
-def _get_transform(transform_cls_name, **kwargs):
-    module = importlib.import_module('resnet.utils.data_util')
-    cls = getattr(module, transform_cls_name)
-    return cls(**kwargs)
+def _get_dataset(dataset_cls_name, **kwargs):
+    module = importlib.import_module('torchvision.datasets')
+    dataset_cls = getattr(module, dataset_cls_name)
+    if 'split' in inspect.signature(dataset_cls).parameters:
+        kwargs['split'] = 'train' if kwargs['train'] else 'val'
+        del kwargs['train']
+    if dataset_cls_name == 'ImageNet':
+        del kwargs['download']
+        # todo(lucaslingle):
+        #    check if it's not downloaded, and then download imagenet here
+    return dataset_cls(**kwargs)
 
 
 def get_dataloaders(
