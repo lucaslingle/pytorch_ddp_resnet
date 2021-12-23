@@ -22,7 +22,7 @@ from resnet.utils.types_util import Dataset, Dataloader
 def _get_dataset(dataset_cls_name, **kwargs):
     module = importlib.import_module('torchvision.datasets')
     dataset_cls = getattr(module, dataset_cls_name)
-    if 'split' in inspect.signature(dataset_cls):
+    if 'split' in inspect.signature(dataset_cls).parameters:
         kwargs['split'] = 'train' if kwargs['train'] else 'val'
         del kwargs['train']
     if dataset_cls_name == 'ImageNet':
