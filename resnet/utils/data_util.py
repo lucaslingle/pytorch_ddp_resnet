@@ -3,12 +3,13 @@ Data util.
 """
 
 from typing import Tuple, Dict, Union, Any, List
-import os
 import importlib
-import math
 import abc
+import os
+import math
 from collections import OrderedDict
 
+import PIL
 import torch as tc
 import torchvision as tv
 from filelock import FileLock
@@ -23,7 +24,7 @@ def _get_dataset(dataset_cls_name, **kwargs):
     return dataset(**kwargs)
 
 
-class Transform(abc.ABC, tc.nn.Module):
+class Transform(tc.nn.Module, abc.ABC):
     def __init__(self, data_shape):
         super().__init__()
         self._data_shape = data_shape
@@ -32,12 +33,8 @@ class Transform(abc.ABC, tc.nn.Module):
     def output_shape(self) -> List[int]:
         return list(self._data_shape)
 
-    @abc.abstractmethod
-    def forward(self, x: tc.Tensor) -> tc.Tensor:
-        raise NotImplementedError
 
-
-class FittableTransform(abc.ABC, Transform):
+class FittableTransform(Transform, abc.ABC):
     @abc.abstractmethod
     def fit(self, dataset: Dataset) -> None:
         raise NotImplementedError
@@ -201,6 +198,20 @@ class RandomCropTransform(Transform):
         return x[:, t_idx:t_idx+self._crop_size, l_idx:l_idx+self._crop_size]
 
 
+class ToTensorTransform(Transform):
+    def __init__(self, data_shape):
+        super().__init__(data_shape)
+        self._transform = tv.transforms.ToTensor()
+
+    @property
+    def output_shape(self):
+        h, w, c = self._data_shape
+        return [c, h, w]
+
+    def forward(self, x: PIL.Image) -> tc.Tensor:
+        return self._transform(x)
+
+
 def _get_transform(transform_cls_name, **kwargs):
     module = importlib.import_module('resnet.utils.data_util')
     cls = getattr(module, transform_cls_name)
@@ -235,22 +246,32 @@ def get_dataloaders(
     os.makedirs(data_dir, exist_ok=True)
     lock_fp = os.path.join(data_dir, f"{dataset_cls_name}.lock")
 
-    # critical section for multiple processes, handled via file-based lock.
+    # critical section for multiple processes, handled via a file-based lock.
     with FileLock(lock_fp):
         transforms_train = OrderedDict()
-        transforms_train['ToTensorTransform'] = tv.transforms.ToTensor()
+        prev_transform = None
 
         for transform_cls_name, transform_kwargs in data_aug.items():
+            # we update dataset with new transforms because there could be
+            # multiple FittedTransforms whose fitting process depends on inputs.
             dataset_train_ = _get_dataset(
                 dataset_cls_name, root=data_dir, train=True, download=True,
-                transform=tc.nn.Sequential(*transforms_train.values()))
+                transform=tv.transforms.Compose(transforms_train.values()))
+
+            if prev_transform is None:
+                data_shape = dataset_train_.data[0].shape
+            else:
+                # since transforms are lazily applied, case above only works to
+                # retrieve raw data tensor shape, not processed!
+                data_shape = prev_transform.output_shape
 
             transform = _get_transform(
                 transform_cls_name=transform_cls_name,
-                data_shape=dataset_train_.data[0].shape,
-                kwargs=transform_kwargs)  # todo(lucaslingle): do kwargs the right way, pycharm is complaining if i dont do this so this is temp fix
-            transforms_train[transform_cls_name] = transform
+                data_shape=data_shape,
+                **transform_kwargs)
 
+            # first process to enter critical section runs for-loop to completion,
+            # checkpointing all fittable transforms along the way.
             if isinstance(transform, FittableTransform):
                 step = maybe_load_checkpoint(
                     checkpoint_dir=checkpoint_dir,
@@ -262,19 +283,26 @@ def get_dataloaders(
                     save_checkpoint(
                         checkpoint_dir=checkpoint_dir,
                         kind_name=transform_cls_name.lower(),
-                        checkpointable=transform_kwargs,
+                        checkpointable=transform,
                         steps=1)
+
+            transforms_train[transform_cls_name] = transform
+            prev_transform = transform
 
         # todo(lucaslingle): add separate composed transform for validation set.
         #     could simply be whitening transform on cifar,
         #     but could also be five crop on imagenet for instance.
         dataset_train = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
-            transform=tc.nn.Sequential(*transforms_train.values()))
+            transform=tv.transforms.Compose([
+                *transforms_train.values()
+            ]))
 
         dataset_test = _get_dataset(
             dataset_cls_name, root=data_dir, train=False, download=True,
-            transform=tc.nn.Sequential(*transforms_train.values()))
+            transform=tv.transforms.Compose([
+                *transforms_train.values()
+            ]))
 
     if num_shards > 1:
         sampler_train = tc.utils.data.DistributedSampler(

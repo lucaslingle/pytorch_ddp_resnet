@@ -4,6 +4,7 @@ master_addr: localhost
 master_port: '12345'
 dataset_cls_name: CIFAR10
 data_aug:
+    ToTensorTransform: {}
     ZeroMeanWhiteningTransform: {}
     FlipTransform: {p: 0.5}
     PaddingTransform: {pad_size: 0, pad_type: zero}
