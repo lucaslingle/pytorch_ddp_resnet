@@ -4,6 +4,7 @@ Data util.
 
 from typing import Tuple, Dict, Union, Any, List
 import importlib
+import inspect
 import abc
 import os
 import math
@@ -20,8 +21,15 @@ from resnet.utils.types_util import Dataset, Dataloader
 
 def _get_dataset(dataset_cls_name, **kwargs):
     module = importlib.import_module('torchvision.datasets')
-    dataset = getattr(module, dataset_cls_name)
-    return dataset(**kwargs)
+    dataset_cls = getattr(module, dataset_cls_name)
+    if 'split' in inspect.signature(dataset_cls):
+        kwargs['split'] = 'train' if kwargs['train'] else 'val'
+        del kwargs['train']
+    if dataset_cls_name == 'ImageNet':
+        del kwargs['download']
+        # todo(lucaslingle):
+        #    check if it's not downloaded, and then download imagenet here
+    return dataset_cls(**kwargs)
 
 
 class Transform(tc.nn.Module, abc.ABC):
