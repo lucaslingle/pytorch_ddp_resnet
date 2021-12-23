@@ -93,9 +93,9 @@ class StandardizeWhiteningTransform(FittableTransform):
         item_count = 1
         for x, y in dataset:
             var *= (item_count - 1) / item_count
-            var += np.square(x-mean) / item_count
+            var += tc.square(x-mean) / item_count
             item_count += 1
-        stddev = np.sqrt(var)
+        stddev = tc.sqrt(var)
 
         self._image_mean.copy_(mean)
         self._image_stddev.copy_(stddev)
@@ -116,34 +116,38 @@ class ZCAWhiteningTransform(FittableTransform):
             requires_grad=False)
         self.register_buffer('_fitted', tc.tensor(False))
 
+    @staticmethod
+    def sqrtm(matrix, eps=1e-6):
+        u, s, v = tc.svd(matrix)
+        return tc.matmul(tc.matmul(u, tc.diag(tc.rsqrt(s + eps))), u.T)
+
     def fit(self, dataset: Dataset) -> None:
         mean = tc.zeros(size=(self._data_dim,), dtype=tc.float32)
         cov = tc.zeros(size=(self._data_dim, self._data_dim), dtype=tc.float32)
 
         item_count = 1
         for x, y in dataset:
-            x = np.array(x).astype(np.float32).reshape(-1)
+            x = x.reshape(-1)
             mean *= (item_count - 1) / item_count
             mean += x / item_count
             item_count += 1
 
         item_count = 1
         for x, y in dataset:
-            x = np.array(x).astype(np.float32).reshape(-1)
+            x = x.reshape(-1)
             vec = (x - mean)
             cov *= (item_count - 1) / item_count
             cov += np.outer(vec, vec) / item_count
             item_count += 1
-        zca_matrix = sp.linalg.sqrtm(cov)
+        zca_matrix = self.sqrtm(cov)
 
         self._zca_matrix.copy_(zca_matrix)
         self.register_buffer('_fitted', tc.tensor(True))
 
     def forward(self, x):
         assert self._fitted
-        flat_white = tc.matmul(self._zca_matrix, x.reshape(-1, 1))
-        whitened = flat_white.reshape(self._data_shape)
-        return whitened
+        whitened = tc.matmul(self._zca_matrix, x.reshape(-1, 1))
+        return whitened.reshape(self._data_shape)
 
 
 class FlipTransform(Transform):
