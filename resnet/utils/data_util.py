@@ -302,15 +302,11 @@ def get_dataloaders(
         #     but could also be five crop on imagenet for instance.
         dataset_train = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
-            transform=tv.transforms.Compose([
-                *transforms_train.values()
-            ]))
+            transform=tv.transforms.Compose(transforms_train.values()))
 
         dataset_test = _get_dataset(
             dataset_cls_name, root=data_dir, train=False, download=True,
-            transform=tv.transforms.Compose([
-                *transforms_train.values()
-            ]))
+            transform=tv.transforms.Compose(transforms_train.values()))
 
     if num_shards > 1:
         sampler_train = tc.utils.data.DistributedSampler(
