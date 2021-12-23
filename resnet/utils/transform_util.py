@@ -29,6 +29,20 @@ class FittableTransform(Transform, abc.ABC):
         raise NotImplementedError
 
 
+class ToTensorTransform(Transform):
+    def __init__(self, data_shape):
+        super().__init__(data_shape)
+        self._transform = tv.transforms.ToTensor()
+
+    @property
+    def output_shape(self):
+        h, w, c = self._data_shape
+        return [c, h, w]
+
+    def forward(self, x: PIL.Image) -> tc.Tensor:
+        return self._transform(x)
+
+
 class ZeroMeanWhiteningTransform(FittableTransform):
     def __init__(self, data_shape):
         super().__init__(data_shape)
@@ -185,17 +199,3 @@ class RandomCropTransform(Transform):
         t_idx = tc.randint(low=0, high=t_index_max+1, size=(1,)).item()
         l_idx = tc.randint(low=0, high=l_index_max+1, size=(1,)).item()
         return x[:, t_idx:t_idx+self._crop_size, l_idx:l_idx+self._crop_size]
-
-
-class ToTensorTransform(Transform):
-    def __init__(self, data_shape):
-        super().__init__(data_shape)
-        self._transform = tv.transforms.ToTensor()
-
-    @property
-    def output_shape(self):
-        h, w, c = self._data_shape
-        return [c, h, w]
-
-    def forward(self, x: PIL.Image) -> tc.Tensor:
-        return self._transform(x)
