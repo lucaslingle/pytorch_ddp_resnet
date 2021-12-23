@@ -117,7 +117,7 @@ class ZCAWhiteningTransform(FittableTransform):
         self.register_buffer('_fitted', tc.tensor(False))
 
     @staticmethod
-    def sqrtm(matrix, eps=1e-6):
+    def sqrtm(matrix, eps=1e-2):
         u, s, v = tc.svd(matrix)
         return tc.matmul(tc.matmul(u, tc.diag(tc.rsqrt(s + eps))), u.T)
 
