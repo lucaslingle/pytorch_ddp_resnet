@@ -68,7 +68,7 @@ class ZeroMeanWhiteningTransform(FittableTransform):
         self._image_mean.copy_(mean)
         self.register_buffer('_fitted', tc.tensor(True))
 
-    def forward(self, x):
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
         assert self._fitted
         whitened = x - self._image_mean
         return whitened
@@ -104,7 +104,7 @@ class StandardizeWhiteningTransform(FittableTransform):
         self._image_stddev.copy_(stddev)
         self.register_buffer('_fitted', tc.tensor(True))
 
-    def forward(self, x):
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
         assert self._fitted
         whitened = (x - self._image_mean) / self._image_stddev
         return whitened
@@ -147,7 +147,7 @@ class ZCAWhiteningTransform(FittableTransform):
         self._zca_matrix.copy_(zca_matrix)
         self.register_buffer('_fitted', tc.tensor(True))
 
-    def forward(self, x):
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
         assert self._fitted
         flat_white = tc.matmul(self._zca_matrix, x.reshape(-1))
         whitened = flat_white.reshape(self._data_shape)
