@@ -19,7 +19,7 @@ def evaluation_loop(
     classifier.eval()
     summed_metrics = Counter()
     num_batch = 0
-    for x, y in dl_test:
+    for i, (x, y) in enumerate(dl_test):
         x, y = x.to(device), y.to(device)
         logits = classifier(x)
         metrics = compute_losses_and_metrics(logits=logits, labels=y)

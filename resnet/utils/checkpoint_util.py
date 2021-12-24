@@ -146,25 +146,23 @@ class CheckpointStrategy(abc.ABC):
 
 
 class FrequencyCheckpointStrategy(CheckpointStrategy):
-    def __init__(self, frequency, unit, **kwargs):
+    def __init__(self, unit, frequency, **kwargs):
         super().__init__()
-        self._frequency = frequency
         self._unit = unit
+        self._frequency = frequency
 
-    def is_eligible(self, step, unit, **kwargs) -> bool:
-        return self._unit == unit and \
-               (step > 0 and step % self._frequency == 0)
+    def is_eligible(self, unit, step, **kwargs) -> bool:
+        return self._unit == unit and step % self._frequency == 0
 
 
 class PerformanceCheckpointStrategy(CheckpointStrategy):
     def __init__(self, unit, **kwargs):
         super().__init__()
-        self._lowest_loss = None
         self._unit = unit
+        self._lowest_loss = float('-inf')
 
-    def is_eligible(self, loss, unit, **kwargs) -> bool:
-        if self._unit == unit and \
-           (self._lowest_loss is None or loss < self._lowest_loss):
+    def is_eligible(self, unit, loss, **kwargs) -> bool:
+        if self._unit == unit and loss < self._lowest_loss:
             self._lowest_loss = loss
             return True
         return False

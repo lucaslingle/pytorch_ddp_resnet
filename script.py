@@ -22,7 +22,7 @@ def create_argparser():
         description="A Pytorch implementation of Deep Residual Networks, " +
                     "using Torch Distributed Data Parallel.")
 
-    parser.add_argument("--mode", choices=['train', 'eval'], default='train')
+    parser.add_argument("--mode", choices=['train', 'eval'], default='eval')
     parser.add_argument("--models_dir", type=str, default='models_dir')
     parser.add_argument("--run_name", type=str, default='default_hparams')
     parser.add_argument("--data_dir", type=str, default='data_dir')
@@ -126,10 +126,13 @@ def train(rank, config):
 
 def evaluate(rank, config):
     learning_system = setup(rank, config)
+    metrics = evaluation_loop(**config, **learning_system)
+    metrics = {k: v.item() for k,v in metrics.items()}
     if rank == 0:
-        metrics = evaluation_loop(**config, **learning_system)
-        metrics = {k: v.item() for k,v in metrics.items()}
         print(f"Test metrics: {metrics}")
+    # todo(lucaslingle): investigate lag bug when rank == 0 check
+    #  is wrapped around evaluation loop. it shouldnt lag
+    #  since there are no distributed computations, but it does.
     cleanup()
 
 
