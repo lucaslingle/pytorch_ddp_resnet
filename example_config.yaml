@@ -5,11 +5,13 @@ master_port: '12345'
 dataset_cls_name: CIFAR10
 data_aug_train:
     ToTensorTransform: {}
+    ZeroMeanWhiteningTransform: {}
     FlipTransform: {p: 0.5}
     PaddingTransform: {pad_size: 4, pad_type: zero}
     RandomCropTransform: {crop_size: 32}
 data_aug_test:
     ToTensorTransform: {}
+    ZeroMeanWhiteningTransform: {}
 architecture_spec: 'c3,16,3,1,1 n a r3 r3 r3 ap8,1,0 fc64,10'
 preact: False
 use_proj: False
