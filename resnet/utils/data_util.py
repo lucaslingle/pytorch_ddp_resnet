@@ -54,8 +54,8 @@ def _get_transforms(
     """
     Creates an ordered dictionary of Transforms.
 
-    :param data_dir: Data dir to download data to; required for fitting transforms.
-    :param dataset_cls_name: Dataset class name.
+    :param data_dir: Data directory to save downloaded datasets to.
+    :param dataset_cls_name: Dataset class name in torchvision.datasets.
     :param data_aug: Data augmentation/processing spec.
     :param checkpoint_dir: Checkpoint directory to save fitted transforms.
     :param is_train: Boolean indicating train or test/validation set.
@@ -115,7 +115,6 @@ def get_datasets(
     """
     Downloads data and builds preprocessing pipeline.
 
-    :param device: Device for fittable transforms.
     :param data_dir: Data directory to save downloaded datasets to.
     :param dataset_cls_name: Dataset class name in torchvision.datasets.
     :param data_aug_train: Training data augmentation/processing spec.
