@@ -64,15 +64,12 @@ def setup(rank, config):
         world_size=config.get('world_size'),
         rank=rank)
 
-    device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
-    datasets = get_datasets(device, **config)
-    # todo(lucaslingle): investigate if we should always use cpu in get_datasets.
-    #      maybe bad perf overhead from moving to gpu one item at a time
-    #      during fitting of the FittableTransforms.
+    datasets = get_datasets(**config)
     sampler_spec = get_sampler_spec(**config)
     samplers = get_samplers(rank, **datasets, **sampler_spec)
     dataloaders = get_dataloaders(**datasets, **sampler_spec, **samplers)
 
+    device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet(
             architecture_spec=config.get('architecture_spec'),

@@ -13,14 +13,14 @@ import torchvision as tv
 from filelock import FileLock
 
 from resnet.utils.checkpoint_util import maybe_load_checkpoint, save_checkpoint
-from resnet.utils.transform_util import FittableTransform
+from resnet.utils.transform_util import Transform, FittableTransform
 from resnet.utils.types_util import Dataset, Sampler, Dataloader
 
 
-def _get_transform(transform_cls_name, **kwargs):
+def _get_transform_cls(transform_cls_name):
     module = importlib.import_module('resnet.utils.transform_util')
     cls = getattr(module, transform_cls_name)
-    return cls(**kwargs)
+    return cls
 
 
 def _get_dataset(dataset_cls_name, **kwargs):
@@ -36,11 +36,69 @@ def _get_dataset(dataset_cls_name, **kwargs):
     return dataset_cls(**kwargs)
 
 
-def get_datasets(
-        device: str,
+def _get_initial_data_shape(data_dir, dataset_cls_name):
+    dataset_train_ = _get_dataset(
+        dataset_cls_name, root=data_dir, train=True, download=True,
+        transform=None)
+    return dataset_train_.data[0].shape
+
+
+def _get_transforms(
         data_dir: str,
         dataset_cls_name: str,
-        data_aug: Dict[str, Union[int, str]],
+        data_aug: Dict[str, Dict[str, Union[str, int, float]]],
+        is_train: bool,
+        reusable_transforms: OrderedDict[Transform],
+        checkpoint_dir: str
+):
+    transforms = OrderedDict()
+    data_shape = _get_initial_data_shape(data_dir, dataset_cls_name)
+    for transform_cls_name, transform_kwargs in data_aug.items():
+        # we update dataset with new transforms because there could be
+        # multiple FittedTransforms whose fitting process depends on inputs.
+        dataset_train_ = _get_dataset(
+            dataset_cls_name, root=data_dir, train=True, download=True,
+            transform=tv.transforms.Compose(transforms.values()))
+
+        transform_cls = _get_transform_cls(transform_cls_name)
+        if issubclass(transform_cls, FittableTransform):
+            if is_train:
+                transform = transform_cls(data_shape, **transform_kwargs)
+                step = maybe_load_checkpoint(
+                    checkpoint_dir=checkpoint_dir,
+                    kind_name=transform_cls_name.lower(),
+                    checkpointable=transform,
+                    map_location='cpu',
+                    steps=None)
+                if step == 0:
+                    transform.fit(dataset=dataset_train_)
+                    save_checkpoint(
+                        checkpoint_dir=checkpoint_dir,
+                        kind_name=transform_cls_name.lower(),
+                        checkpointable=transform,
+                        steps=1)
+            else:
+                if transform_cls_name not in reusable_transforms:
+                    msg = "Fittable test transform not in reusable transforms."
+                    raise ValueError(msg)
+
+                transform = reusable_transforms[transform_cls_name]
+                if transform.data_shape != data_shape:
+                    msg = "Input shape mismatch on reusable transform"
+                    raise ValueError(msg)
+        else:
+            transform = transform_cls(data_shape, **transform_kwargs)
+
+        transforms[transform_cls_name] = transform
+        data_shape = transform.output_shape
+    return transforms
+
+
+def get_datasets(
+        data_dir: str,
+        dataset_cls_name: str,
+        data_aug_train: Dict[str, Dict[Union[str, int, float]]],
+        data_aug_test: Dict[str, Dict[Union[str, int, float]]],
         checkpoint_dir: str,
         **kwargs: Dict[str, Any]
 ) -> Dict[str, Dataset]:
@@ -50,69 +108,35 @@ def get_datasets(
     :param device: Device for fittable transforms.
     :param data_dir: Data directory to save downloaded datasets to.
     :param dataset_cls_name: Dataset class name in torchvision.datasets.
-    :param data_aug: Data augmentation dictionary.
-    :param checkpoint_dir: Checkpoint directory to save fitted whitening transforms.
+    :param data_aug_train: Training data augmentation/processing spec.
+    :param data_aug_test: Test data augmentation/processing spec.
+    :param checkpoint_dir: Checkpoint directory to save fitted transforms.
     :param kwargs: Keyword arguments.
     :return: Dictionary of train and test datasets.
     """
     os.makedirs(data_dir, exist_ok=True)
     lock_fp = os.path.join(data_dir, f"{dataset_cls_name}.lock")
-
-    # critical section for multiple processes, handled via a file-based lock.
     with FileLock(lock_fp):
-        transforms_train = OrderedDict()
-        prev_transform = None
+        transforms_train = _get_transforms(
+            data_dir=data_dir, dataset_cls_name=dataset_cls_name,
+            data_aug=data_aug_train, checkpoint_dir=checkpoint_dir,
+            is_train=True, reusable_transforms=OrderedDict())
 
-        for transform_cls_name, transform_kwargs in data_aug.items():
-            # we update dataset with new transforms because there could be
-            # multiple FittedTransforms whose fitting process depends on inputs.
-            dataset_train_ = _get_dataset(
-                dataset_cls_name, root=data_dir, train=True, download=True,
-                transform=tv.transforms.Compose(transforms_train.values()))
+        transforms_test = _get_transforms(
+            data_dir=data_dir,
+            dataset_cls_name=dataset_cls_name,
+            data_aug=data_aug_test,
+            is_train=False,
+            checkpoint_dir=checkpoint_dir,
+            reusable_transforms=OrderedDict())
 
-            if prev_transform is None:
-                data_shape = dataset_train_.data[0].shape
-            else:
-                # since transforms are lazily applied, case above only works to
-                # retrieve raw data tensor shape, not processed!
-                data_shape = prev_transform.output_shape
-
-            transform = _get_transform(
-                transform_cls_name=transform_cls_name,
-                data_shape=data_shape,
-                **transform_kwargs
-            ).to(device)
-
-            # first process to enter critical section runs for-loop to completion,
-            # checkpointing all fittable transforms along the way.
-            if isinstance(transform, FittableTransform):
-                step = maybe_load_checkpoint(
-                    checkpoint_dir=checkpoint_dir,
-                    kind_name=transform_cls_name.lower(),
-                    checkpointable=transform,
-                    map_location=device,
-                    steps=None)
-                if step == 0:
-                    transform.fit(dataset=dataset_train_)
-                    save_checkpoint(
-                        checkpoint_dir=checkpoint_dir,
-                        kind_name=transform_cls_name.lower(),
-                        checkpointable=transform,
-                        steps=1)
-
-            transforms_train[transform_cls_name] = transform
-            prev_transform = transform
-
-        # todo(lucaslingle): add separate composed transform for validation set.
-        #     could simply be whitening transform on cifar,
-        #     but could also be five crop on imagenet for instance.
         dataset_train = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
             transform=tv.transforms.Compose(transforms_train.values()))
 
         dataset_test = _get_dataset(
             dataset_cls_name, root=data_dir, train=False, download=True,
-            transform=tv.transforms.Compose(transforms_train.values()))
+            transform=tv.transforms.Compose(transforms_test.values()))
 
         return {
             'dataset_train': dataset_train,
