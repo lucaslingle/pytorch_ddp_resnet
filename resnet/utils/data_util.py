@@ -56,14 +56,14 @@ def _get_transforms(
     for transform_cls_name, transform_kwargs in data_aug.items():
         # we update dataset with new transforms because there could be
         # multiple FittedTransforms whose fitting process depends on inputs.
-        dataset_train_ = _get_dataset(
+        dataset = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
             transform=tv.transforms.Compose(transforms.values()))
 
         transform_cls = _get_transform_cls(transform_cls_name)
-        if issubclass(transform_cls, FittableTransform):
-            if is_train:
-                transform = transform_cls(data_shape, **transform_kwargs)
+        transform = transform_cls(data_shape, **transform_kwargs)
+        if is_train:
+            if isinstance(transform, FittableTransform):
                 step = maybe_load_checkpoint(
                     checkpoint_dir=checkpoint_dir,
                     kind_name=transform_cls_name.lower(),
@@ -71,23 +71,22 @@ def _get_transforms(
                     map_location='cpu',
                     steps=None)
                 if step == 0:
-                    transform.fit(dataset=dataset_train_)
+                    transform.fit(dataset=dataset)
                     save_checkpoint(
                         checkpoint_dir=checkpoint_dir,
                         kind_name=transform_cls_name.lower(),
                         checkpointable=transform,
                         steps=1)
-            else:
+        else:
+            if isinstance(transform, FittableTransform):
                 if transform_cls_name not in reusable_transforms:
                     msg = "Fittable test transform not in reusable transforms."
                     raise ValueError(msg)
 
                 transform = reusable_transforms[transform_cls_name]
                 if transform.data_shape != data_shape:
-                    msg = "Input shape mismatch on reusable transform"
+                    msg = "Input shape mismatch on reusable transform."
                     raise ValueError(msg)
-        else:
-            transform = transform_cls(data_shape, **transform_kwargs)
 
         transforms[transform_cls_name] = transform
         data_shape = transform.output_shape
