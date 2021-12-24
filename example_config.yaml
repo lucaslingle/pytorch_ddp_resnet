@@ -1,5 +1,5 @@
 backend: gloo
-world_size: 8
+world_size: 2
 master_addr: localhost
 master_port: '12345'
 dataset_cls_name: CIFAR10
