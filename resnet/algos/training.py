@@ -57,8 +57,8 @@ def training_loop(
     :param scheduler_step_unit: One of 'batch', 'epoch', 'none'.
     :param sampler_train: Training distributed sampler.
     :param sampler_test: Test/val distributed sampler.
-    :param dl_train: Training dataloader with shards over world_size devices.
-    :param dl_test: Test/val dataloader with shards over world_size devices.
+    :param dl_train: Training dataloader.
+    :param dl_test: Test/val dataloader.
     :param device: Device name.
     :param global_step: Global step to start from.
     :param max_steps: Maximum number of steps.
