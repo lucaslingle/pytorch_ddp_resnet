@@ -10,7 +10,9 @@ from torch.utils.tensorboard import SummaryWriter
 from resnet.algos.metrics import compute_losses_and_metrics
 from resnet.algos.evaluation import evaluation_loop
 from resnet.utils.checkpoint_util import CheckpointStrategy, save_checkpoints
-from resnet.utils.types_util import Module, Optimizer, Scheduler, Dataloader
+from resnet.utils.types_util import (
+    Module, Optimizer, Scheduler, Sampler, Dataloader
+)
 
 
 def requires_loss(scheduler: Scheduler) -> bool:
@@ -31,6 +33,8 @@ def training_loop(
         optimizer: Optimizer,
         scheduler: Optional[Scheduler],
         scheduler_step_unit: str,
+        sampler_train: Sampler,
+        sampler_test: Sampler,
         dl_train: Dataloader,
         dl_test: Dataloader,
         device: str,
@@ -51,6 +55,8 @@ def training_loop(
     :param optimizer: Optimizer.
     :param scheduler: Optional learning rate scheduler.
     :param scheduler_step_unit: One of 'batch', 'epoch', 'none'.
+    :param sampler_train: Training distributed sampler.
+    :param sampler_test: Test/val distributed sampler.
     :param dl_train: Training dataloader with shards over world_size devices.
     :param dl_test: Test/val dataloader with shards over world_size devices.
     :param device: Device name.
@@ -79,6 +85,11 @@ def training_loop(
         return global_step >= max_steps
 
     while not done():
+        # todo(lucaslingle): use something more reliable to estimate epoch,
+        #  see warning at link https://pytorch.org/docs/stable/data.html
+        epoch = (global_step // len(dl_train))
+        sampler_train.set_epoch(epoch)
+
         for x, y in dl_train:
             x, y = x.to(device), y.to(device)
             logits = classifier(x)
@@ -118,9 +129,6 @@ def training_loop(
             if done():
                 break
 
-        # todo(lucaslingle): use something more reliable to estimate epoch,
-        #  see warning at link https://pytorch.org/docs/stable/data.html
-        epoch = (global_step // len(dl_train))
         val_metrics = evaluation_loop(classifier, dl_test, device)
         val_metrics_global = global_means(val_metrics)
         val_loss_global = val_metrics_global.get('loss').item()

@@ -53,6 +53,7 @@ def maybe_load_checkpoint(
         checkpoint_dir: str,
         kind_name: str,
         checkpointable: Checkpointable,
+        map_location: str,
         steps: Optional[int]
 ) -> int:
     base_path = checkpoint_dir
@@ -63,7 +64,7 @@ def maybe_load_checkpoint(
         print(f"Bad {kind_name} checkpoint or none at {base_path} with step {steps}.")
         print("Running from scratch.")
         return 0
-    state_dict = tc.load(path)
+    state_dict = tc.load(path, map_location=map_location)
     checkpointable.load_state_dict(state_dict)
     print(f"Loaded {kind_name} checkpoint from {base_path}, with step {steps_}."),
     print("Continuing from checkpoint.")
@@ -87,11 +88,13 @@ def save_checkpoint(
 def maybe_load_checkpoints(
         checkpoint_dir: str,
         checkpointables: Dict[str, Optional[Checkpointable]],
+        map_location: str,
         steps: Optional[int]
 ) -> int:
     """
     :param checkpoint_dir: Checkpoint dir.
     :param checkpointables: Dictionary of checkpointables keyed by kind name.
+    :param map_location: Map location specifying how remap storage locations.
     :param steps: Number of steps so far. If None, uses latest.
     :return: Number of steps in latest checkpoint. If no checkpoints, returns 0.
     """
@@ -103,6 +106,7 @@ def maybe_load_checkpoints(
                 checkpoint_dir=checkpoint_dir,
                 kind_name=kind_name,
                 checkpointable=checkpointable,
+                map_location=map_location,
                 steps=steps)
             global_steps.append(step_)
     if len(set(global_steps)) != 1:

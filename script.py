@@ -10,7 +10,7 @@ from resnet.algos.training import training_loop
 from resnet.algos.evaluation import evaluation_loop
 
 from resnet.utils.config_util import ConfigParser
-from resnet.utils.data_util import get_dataloaders
+from resnet.utils.data_util import get_datasets, get_samplers, get_dataloaders
 from resnet.utils.optim_util import get_optimizer, get_scheduler
 from resnet.utils.checkpoint_util import (
     get_checkpoint_strategy, maybe_load_checkpoints
@@ -47,14 +47,11 @@ def get_config(args):
     return config
 
 
-def get_shard_spec(config):
-    if config.get('mode') == 'train':
-        num_shards = config.get('world_size')
-    else:
-        num_shards = 1
-    local_batch_size = config.get('batch_size') // num_shards
+def get_sampler_spec(mode, world_size, batch_size, **kwargs):
+    num_replicas = world_size if mode == 'train' else 1
+    local_batch_size = batch_size // num_replicas
     return {
-        "num_shards": num_shards,
+        "num_replicas": num_replicas,
         "local_batch_size": local_batch_size
     }
 
@@ -67,10 +64,15 @@ def setup(rank, config):
         world_size=config.get('world_size'),
         rank=rank)
 
-    shard_spec = get_shard_spec(config)
-    dl_train, dl_test = get_dataloaders(rank, **config, **shard_spec)
-
     device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
+    datasets = get_datasets(device, **config)
+    # todo(lucaslingle): investigate if we should always use cpu in get_datasets.
+    #      maybe bad perf overhead from moving to gpu one item at a time
+    #      during fitting of the FittableTransforms.
+    sampler_spec = get_sampler_spec(**config)
+    samplers = get_samplers(rank, **datasets, **sampler_spec)
+    dataloaders = get_dataloaders(**datasets, **sampler_spec, **samplers)
+
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet(
             architecture_spec=config.get('architecture_spec'),
@@ -98,12 +100,15 @@ def setup(rank, config):
             'optimizer': optimizer,
             'scheduler': scheduler
         },
+        map_location=device,
         steps=None)
 
     return {
         "device": device,
-        "dl_train": dl_train,
-        "dl_test": dl_test,
+        "sampler_train": samplers.get('sampler_train'),
+        "sampler_test": samplers.get('sampler_test'),
+        "dl_train": dataloaders.get('dl_train'),
+        "dl_test": dataloaders.get('dl_test'),
         "classifier": classifier,
         "optimizer": optimizer,
         "scheduler": scheduler,
@@ -124,9 +129,8 @@ def train(rank, config):
 
 def evaluate(rank, config):
     learning_system = setup(rank, config)
-    if rank == 0:
-        metrics = evaluation_loop(**config, **learning_system)
-        print(f"Test loss: {metrics['loss']}... Test accuracy: {metrics['acc']}")
+    metrics = evaluation_loop(**config, **learning_system)
+    print(f"Test loss: {metrics['loss']}... Test accuracy: {metrics['acc']}")
     cleanup()
 
 
@@ -141,8 +145,4 @@ if __name__ == '__main__':
             nprocs=config.get('world_size'),
             join=True)
     else:
-        tc.multiprocessing.spawn(
-            evaluate,
-            args=config.get('world_size'),
-            nprocs=1,
-            join=True)
+        evaluate(rank=0, config=config)
