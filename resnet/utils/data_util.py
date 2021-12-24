@@ -107,8 +107,8 @@ def _get_transforms(
 def get_datasets(
         data_dir: str,
         dataset_cls_name: str,
-        data_aug_train: Dict[str, Dict[Union[str, int, float]]],
-        data_aug_test: Dict[str, Dict[Union[str, int, float]]],
+        data_aug_train: Dict[str, Dict[str, Union[str, int, float]]],
+        data_aug_test: Dict[str, Dict[str, Union[str, int, float]]],
         checkpoint_dir: str,
         **kwargs: Dict[str, Any]
 ) -> Dict[str, Dataset]:
