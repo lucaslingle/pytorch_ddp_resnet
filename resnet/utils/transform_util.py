@@ -13,6 +13,12 @@ import torchvision as tv
 from resnet.utils.types_util import Dataset
 
 
+# todo(lucaslingle):
+#   Consider having the FittableTransforms' fit method take a Dataloader instead of a dataset.
+#   This could be faster when fitting on the gpu.
+#   They may also need a 'device' argument to ship batches over to the correct device.
+
+
 class Transform(tc.nn.Module, abc.ABC):
     def __init__(self, data_shape):
         super().__init__()
