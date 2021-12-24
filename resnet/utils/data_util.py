@@ -47,10 +47,21 @@ def _get_transforms(
         data_dir: str,
         dataset_cls_name: str,
         data_aug: Dict[str, Dict[str, Union[str, int, float]]],
+        checkpoint_dir: str,
         is_train: bool,
-        reusable_transforms: OrderedDict[Transform],
-        checkpoint_dir: str
-):
+        reusable_transforms: OrderedDict[str, Transform],
+) -> OrderedDict[str, Transform]:
+    """
+    Creates an ordered dictionary of Transforms.
+
+    :param data_dir: Data dir to download data to; required for fitting transforms.
+    :param dataset_cls_name: Dataset class name.
+    :param data_aug: Data augmentation/processing spec.
+    :param checkpoint_dir: Checkpoint directory to save fitted transforms.
+    :param is_train: Boolean indicating train or test/validation set.
+    :param reusable_transforms: OrderedDict of reusable transforms.
+    :return: OrderedDict of Transforms.
+    """
     transforms = OrderedDict()
     data_shape = _get_initial_data_shape(data_dir, dataset_cls_name)
     for transform_cls_name, transform_kwargs in data_aug.items():
@@ -80,7 +91,7 @@ def _get_transforms(
         else:
             if isinstance(transform, FittableTransform):
                 if transform_cls_name not in reusable_transforms:
-                    msg = "Fittable test transform not in reusable transforms."
+                    msg = "Fittable test transform not in reusable_transforms."
                     raise ValueError(msg)
 
                 transform = reusable_transforms[transform_cls_name]
@@ -122,12 +133,9 @@ def get_datasets(
             is_train=True, reusable_transforms=OrderedDict())
 
         transforms_test = _get_transforms(
-            data_dir=data_dir,
-            dataset_cls_name=dataset_cls_name,
-            data_aug=data_aug_test,
-            is_train=False,
-            checkpoint_dir=checkpoint_dir,
-            reusable_transforms=OrderedDict())
+            data_dir=data_dir, dataset_cls_name=dataset_cls_name,
+            data_aug=data_aug_test, checkpoint_dir=checkpoint_dir,
+            is_train=False, reusable_transforms=transforms_train)
 
         dataset_train = _get_dataset(
             dataset_cls_name, root=data_dir, train=True, download=True,
