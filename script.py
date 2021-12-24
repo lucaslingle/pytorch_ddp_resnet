@@ -128,7 +128,7 @@ def evaluate(rank, config):
     learning_system = setup(rank, config)
     metrics = evaluation_loop(**config, **learning_system)
     metrics = {k: v.item() for k,v in metrics.items()}
-    print(f"Test loss: {metrics['loss']}... Test accuracy: {metrics['acc']}")
+    print(f"Test metrics: {metrics}")
     cleanup()
 
 
