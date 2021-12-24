@@ -22,7 +22,7 @@ def create_argparser():
         description="A Pytorch implementation of Deep Residual Networks, " +
                     "using Torch Distributed Data Parallel.")
 
-    parser.add_argument("--mode", choices=['train', 'eval'], default='eval')
+    parser.add_argument("--mode", choices=['train', 'eval'], default='train')
     parser.add_argument("--models_dir", type=str, default='models_dir')
     parser.add_argument("--run_name", type=str, default='default_hparams')
     parser.add_argument("--data_dir", type=str, default='data_dir')
@@ -64,8 +64,8 @@ def setup(rank, config):
         world_size=config.get('world_size'),
         rank=rank)
 
-    sampler_spec = get_sampler_spec(**config)
     datasets = get_datasets(**config)
+    sampler_spec = get_sampler_spec(**config)
     samplers = get_samplers(rank, **datasets, **sampler_spec)
     dataloaders = get_dataloaders(**datasets, **sampler_spec, **samplers)
 
