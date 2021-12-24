@@ -10,7 +10,7 @@ data_aug_train:
     RandomCropTransform: {crop_size: 32}
 data_aug_test:
     ToTensorTransform: {}
-architecture_spec: 'c3,16,3,1,1 r3 r3 r3 ap8,1,0 fc64,10'
+architecture_spec: 'c3,16,3,1,1 n a r3 r3 r3 ap8,1,0 fc64,10'
 preact: False
 use_proj: False
 dropout_prob: 0.0
