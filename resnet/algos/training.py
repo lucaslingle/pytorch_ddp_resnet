@@ -90,6 +90,7 @@ def training_loop(
         epoch = (global_step // len(dl_train))
         sampler_train.set_epoch(epoch)
 
+        classifier.train()
         for x, y in dl_train:
             x, y = x.to(device), y.to(device)
             logits = classifier(x)
