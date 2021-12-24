@@ -17,10 +17,10 @@ from resnet.utils.transform_util import Transform, FittableTransform
 from resnet.utils.types_util import Dataset, Sampler, Dataloader
 
 
-def _get_transform(transform_cls_name, **kwargs):
+def _get_transform_cls(transform_cls_name):
     module = importlib.import_module('resnet.utils.transform_util')
     cls = getattr(module, transform_cls_name)
-    return cls(**kwargs)
+    return cls
 
 
 def _get_dataset(dataset_cls_name, **kwargs):
@@ -60,9 +60,8 @@ def _get_transforms(
             dataset_cls_name, root=data_dir, train=True, download=True,
             transform=tv.transforms.Compose(transforms.values()))
 
-        transform_cls = _get_transform(
-            transform_cls_name=transform_cls_name,
-            data_shape=data_shape, **transform_kwargs)
+        transform_cls = _get_transform_cls(transform_cls_name)
+        transform = transform_cls(data_shape, **transform_kwargs)
         if is_train:
             if isinstance(transform, FittableTransform):
                 step = maybe_load_checkpoint(
