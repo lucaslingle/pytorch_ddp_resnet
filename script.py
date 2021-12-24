@@ -22,7 +22,7 @@ def create_argparser():
         description="A Pytorch implementation of Deep Residual Networks, " +
                     "using Torch Distributed Data Parallel.")
 
-    parser.add_argument("--mode", choices=['train', 'eval'], default='train')
+    parser.add_argument("--mode", choices=['train', 'eval'], default='eval')
     parser.add_argument("--models_dir", type=str, default='models_dir')
     parser.add_argument("--run_name", type=str, default='default_hparams')
     parser.add_argument("--data_dir", type=str, default='data_dir')
@@ -64,8 +64,8 @@ def setup(rank, config):
         world_size=config.get('world_size'),
         rank=rank)
 
-    datasets = get_datasets(**config)
     sampler_spec = get_sampler_spec(**config)
+    datasets = get_datasets(**config)
     samplers = get_samplers(rank, **datasets, **sampler_spec)
     dataloaders = get_dataloaders(**datasets, **sampler_spec, **samplers)
 
@@ -126,9 +126,10 @@ def train(rank, config):
 
 def evaluate(rank, config):
     learning_system = setup(rank, config)
-    metrics = evaluation_loop(**config, **learning_system)
-    metrics = {k: v.item() for k,v in metrics.items()}
-    print(f"Test metrics: {metrics}")
+    if rank == 0:
+        metrics = evaluation_loop(**config, **learning_system)
+        metrics = {k: v.item() for k,v in metrics.items()}
+        print(f"Test metrics: {metrics}")
     cleanup()
 
 
@@ -143,4 +144,8 @@ if __name__ == '__main__':
             nprocs=config.get('world_size'),
             join=True)
     else:
-        evaluate(rank=0, config=config)
+        tc.multiprocessing.spawn(
+            evaluate,
+            args=(config,),
+            nprocs=config.get('world_size'),
+            join=True)

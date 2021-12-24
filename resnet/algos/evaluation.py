@@ -13,7 +13,8 @@ from resnet.algos.metrics import compute_losses_and_metrics
 def evaluation_loop(
         classifier,
         dl_test,
-        device
+        device,
+        **kwargs
 ):
     classifier.eval()
     summed_metrics = Counter()
