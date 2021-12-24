@@ -35,7 +35,7 @@ class ResNet(tc.nn.Module):
 
         :param architecture_spec: A string containing a space-separated list of
             architectural components chosen from
-                {"cK,S,P,I,O", "mpK,S,P", "apK,S,P", "rD", "bD", "n", "a", "fI,O"}.
+                {"cI,O,K,S,P", "mpK,S,P", "apK,S,P", "rD", "bD", "n", "a", "fI,O"}.
             c stands for convolution,
             mp for max pooling,
             ap for average pooling,
@@ -124,9 +124,9 @@ class ResNet(tc.nn.Module):
         channels = None
         for n, component in enumerate(spec.split()):
             if component.startswith('c'):
-                kspio = extract_ints(component, 5)
-                m = self._make_conv(*kspio)
-                channels = kspio[-1]
+                ioksp = extract_ints(component, 5)
+                m = self._make_conv(*ioksp)
+                channels = ioksp[1]
             elif component.startswith('mp'):
                 m = self._make_maxpool(*extract_ints(component, 3))
             elif component.startswith('ap'):
