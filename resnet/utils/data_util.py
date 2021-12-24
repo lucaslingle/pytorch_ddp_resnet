@@ -5,6 +5,7 @@ Data util.
 from typing import Dict, Union, Any, Optional
 import importlib
 import inspect
+import contextlib
 import os
 from collections import OrderedDict
 
@@ -33,7 +34,10 @@ def _get_dataset(dataset_cls_name, **kwargs):
         del kwargs['download']
         # todo(lucaslingle):
         #    check if it's not downloaded, and then download imagenet here
-    return dataset_cls(**kwargs)
+    with open(os.devnull, 'w') as f:
+        with contextlib.redirect_stdout(f):
+            dataset = dataset_cls(**kwargs)
+    return dataset
 
 
 def _get_initial_data_shape(data_dir, dataset_cls_name):

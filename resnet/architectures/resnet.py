@@ -66,7 +66,7 @@ class ResNet(tc.nn.Module):
         self._architecture = self._parse_spec(architecture_spec)
         self._init_weights()
 
-    def _make_conv(self, k, s, p, i, o):
+    def _make_conv(self, i, o, k, s, p):
         return tc.nn.Conv2d(
             in_channels=i,
             out_channels=o,
