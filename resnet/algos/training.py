@@ -138,7 +138,7 @@ def training_loop(
             step_scheduler(scheduler, val_loss_global)
 
         if rank == 0:
-            print(f"epoch: {epoch}... loss: {val_loss_global}")
+            print(f"epoch: {epoch}... validation loss: {val_loss_global}")
             for name in val_metrics_global:
                 writer.add_scalar(
                     tag=f"val/{name}",
