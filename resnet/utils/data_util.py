@@ -37,21 +37,21 @@ def _get_dataset(dataset_cls_name, **kwargs):
 
 
 def get_datasets(
+        device: str,
         data_dir: str,
         dataset_cls_name: str,
         data_aug: Dict[str, Union[int, str]],
         checkpoint_dir: str,
-        device: str,
         **kwargs: Dict[str, Any]
 ) -> Dict[str, Dataset]:
     """
     Downloads data and builds preprocessing pipeline.
 
+    :param device: Device for fittable transforms.
     :param data_dir: Data directory to save downloaded datasets to.
     :param dataset_cls_name: Dataset class name in torchvision.datasets.
     :param data_aug: Data augmentation dictionary.
     :param checkpoint_dir: Checkpoint directory to save fitted whitening transforms.
-    :param device: Device for fittable transforms.
     :param kwargs: Keyword arguments.
     :return: Dictionary of train and test datasets.
     """
