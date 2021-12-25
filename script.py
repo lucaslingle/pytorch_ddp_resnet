@@ -126,6 +126,8 @@ def evaluate(rank, config):
 if __name__ == '__main__':
     args = create_argparser().parse_args()
     config = get_config(args)
-    fn = train if config.get('mode') == 'train' else evaluate,
     tc.multiprocessing.spawn(
-        fn, args=(config,), nprocs=config.get('world_size'), join=True)
+        train if config.get('mode') == 'train' else evaluate,
+        args=(config,),
+        nprocs=config.get('world_size'),
+        join=True)
