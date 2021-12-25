@@ -120,7 +120,7 @@ class ZCAWhiteningTransform(FittableTransform):
 
     @staticmethod
     def sqrtm(matrix, eps=1e-2):
-        u, s, v = tc.svd(matrix)
+        u, s, v = tc.linalg.svd(matrix)
         return tc.matmul(tc.matmul(u, tc.diag(tc.rsqrt(s + eps))), u.T)
 
     def fit(self, dataset: Dataset) -> None:
@@ -203,3 +203,63 @@ class RandomCropTransform(Transform):
         t_idx = tc.randint(low=0, high=t_index_max+1, size=(1,)).item()
         l_idx = tc.randint(low=0, high=l_index_max+1, size=(1,)).item()
         return x[:, t_idx:t_idx+self._crop_size, l_idx:l_idx+self._crop_size]
+
+
+class RandomScaleTransform(Transform):
+    def __init__(self, data_shape, target_short_side):
+        super().__init__(data_shape)
+        self._target_short_side = target_short_side
+
+    @property
+    def output_shape(self) -> List[int]:
+        c, h, w = self._data_shape
+        return [c, None, None]
+
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
+        x_shape = list(x.shape)
+        c, h, w = x_shape
+        short_idx, long_idx = (1, 2) if h <= w else (2, 1)
+        short_size, long_size = x_shape[short_idx], x_shape[long_idx]
+        tgt_shape = [c, None, None]
+        tgt_shape[short_idx] = self._target_short_side
+        tgt_shape[long_idx] = int((self._scaled_short_size / short_size) * long_size)
+        return tc.nn.functional.interpolate(x, size=tgt_shape, mode='bilinear')
+
+
+class ColorTransform(FittableTransform):
+    def __init__(self, data_shape):
+        super().__init__(data_shape)
+        self._rgb_eigenvals = tc.nn.Parameter(
+            tc.zeros(size=(3,), dtype=tc.float32), requires_grad=False)
+        self._rgb_eigenvecs = tc.nn.Parameter(
+            tc.zeros(size=(3,3), dtype=tc.float32), requires_grad=False)
+        self.register_buffer('_fitted', tc.tensor(False))
+
+    def fit(self, dataset: Dataset) -> None:
+        mean = tc.zeros(size=(3,), dtype=tc.float32)
+        cov = tc.zeros(size=(3,3), dtype=tc.float32)
+
+        item_count = 1
+        for x, y in dataset:
+            mean *= (item_count - 1) / item_count
+            mean += x.mean(dims=(1,2)) / item_count
+            item_count += 1
+
+        item_count = 1
+        for x, y in dataset:
+            vec = (x - mean).mean(dims=(1,2))
+            cov *= (item_count - 1) / item_count
+            cov += tc.outer(vec, vec) / item_count
+            item_count += 1
+        eigenvals, eigenvecs = tc.linalg.eig(cov)
+
+        self._rgb_eigenvals.copy_(eigenvals.real)
+        self._rgb_eigenvecs.copy_(eigenvecs.real)
+        self.register_buffer('_fitted', tc.tensor(True))
+
+    def forward(self, x: tc.Tensor) -> tc.Tensor:
+        assert self._fitted
+        alphas = 0.1 * tc.randn(size=(3,))
+        lambdas = self._rgb_eigenvals
+        quantity = tc.matmul(self._rgb_eigenvecs, (alphas * lambdas))
+        return x + quantity.reshape(1, 1, 3)
