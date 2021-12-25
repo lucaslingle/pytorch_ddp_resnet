@@ -18,12 +18,12 @@ def top_k_err(logits, labels, k):
 
 def compute_losses_and_metrics(logits, labels):
     loss = cross_entropy_loss(logits, labels)
-    top1 = top_k_err(logits, labels, k=1)
-    top5 = top_k_err(logits, labels, k=5)
+    top1_err = top_k_err(logits, labels, k=1)
+    top5_err = top_k_err(logits, labels, k=5)
     return {
         "loss": loss,
-        "top1": top1,
-        "top5": top5
+        "top1_err": top1_err,
+        "top5_err": top5_err
     }
 
 
