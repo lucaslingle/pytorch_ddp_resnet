@@ -247,7 +247,7 @@ class ColorTransform(FittableTransform):
 
         item_count = 1
         for x, y in dataset:
-            vec = (x - mean).mean(dims=(1,2))
+            vec = x.mean(dims=(1,2)) - mean
             cov *= (item_count - 1) / item_count
             cov += tc.outer(vec, vec) / item_count
             item_count += 1
