@@ -42,5 +42,5 @@ def evaluation_loop(
         num_batch += 1
 
     metrics = {k: v / num_batch for k,v in summed_metrics.items()}
-    return {k: v.item() for k,v in global_means(metrics, world_size)}
+    return global_means(metrics, world_size)
 
