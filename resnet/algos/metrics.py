@@ -25,3 +25,13 @@ def compute_losses_and_metrics(logits, labels):
         "top1": top1,
         "top5": top5
     }
+
+
+def global_mean(metric, world_size):
+    global_metric = metric.detach()
+    tc.distributed.all_reduce(global_metric, op=tc.distributed.ReduceOp.SUM)
+    return global_metric / world_size
+
+
+def global_means(metrics, world_size):
+       return {k: global_mean(v, world_size) for k, v in metrics.items()}

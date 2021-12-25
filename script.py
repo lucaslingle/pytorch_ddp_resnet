@@ -47,15 +47,6 @@ def get_config(args):
     return config
 
 
-def get_sampler_spec(mode, world_size, batch_size, **kwargs):
-    num_replicas = world_size if mode == 'train' else 1
-    local_batch_size = batch_size // num_replicas
-    return {
-        "num_replicas": num_replicas,
-        "local_batch_size": local_batch_size
-    }
-
-
 def setup(rank, config):
     os.environ['MASTER_ADDR'] = config.get('master_addr')
     os.environ['MASTER_PORT'] = config.get('master_port')
@@ -65,9 +56,8 @@ def setup(rank, config):
         rank=rank)
 
     datasets = get_datasets(**config)
-    sampler_spec = get_sampler_spec(**config)
-    samplers = get_samplers(rank, **datasets, **sampler_spec)
-    dataloaders = get_dataloaders(**datasets, **sampler_spec, **samplers)
+    samplers = get_samplers(rank, **config, **datasets)
+    dataloaders = get_dataloaders(**config, **datasets, **samplers)
 
     device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
     classifier = tc.nn.parallel.DistributedDataParallel(
@@ -130,25 +120,12 @@ def evaluate(rank, config):
     metrics = {k: v.item() for k,v in metrics.items()}
     if rank == 0:
         print(f"Test metrics: {metrics}")
-    # todo(lucaslingle): investigate lag bug when rank == 0 check
-    #  is wrapped around evaluation loop. it shouldnt lag
-    #  since there are no distributed computations, but it does.
     cleanup()
 
 
 if __name__ == '__main__':
     args = create_argparser().parse_args()
     config = get_config(args)
-
-    if args.mode == 'train':
-        tc.multiprocessing.spawn(
-            train,
-            args=(config,),
-            nprocs=config.get('world_size'),
-            join=True)
-    else:
-        tc.multiprocessing.spawn(
-            evaluate,
-            args=(config,),
-            nprocs=config.get('world_size'),
-            join=True)
+    fn = train if config.get('mode') == 'train' else evaluate,
+    tc.multiprocessing.spawn(
+        fn, args=(config,), nprocs=config.get('world_size'), join=True)

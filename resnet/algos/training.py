@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, Union
 import torch as tc
 from torch.utils.tensorboard import SummaryWriter
 
-from resnet.algos.metrics import compute_losses_and_metrics
+from resnet.algos.metrics import compute_losses_and_metrics, global_means
 from resnet.algos.evaluation import evaluation_loop
 from resnet.utils.checkpoint_util import CheckpointStrategy, save_checkpoints
 from resnet.utils.types_util import (
@@ -72,15 +72,6 @@ def training_loop(
     if rank == 0:
         writer = SummaryWriter(log_dir)
 
-    def global_mean(metric):  # for logging
-        global_metric = metric.detach()
-        tc.distributed.reduce(
-            global_metric, dst=0, op=tc.distributed.ReduceOp.SUM)
-        return global_metric / world_size
-
-    def global_means(metrics):
-        return {k: global_mean(v) for k, v in metrics.items()}
-
     def done():
         return global_step >= max_steps
 
@@ -101,7 +92,7 @@ def training_loop(
             loss.backward()
             optimizer.step()
 
-            global_metrics = global_means(metrics)
+            global_metrics = global_means(metrics, world_size)
             global_loss = global_metrics.get('loss').item()
 
             if scheduler and scheduler_step_unit == 'batch':
@@ -130,23 +121,22 @@ def training_loop(
             if done():
                 break
 
-        val_metrics = evaluation_loop(classifier, dl_test, device)
-        val_metrics_global = global_means(val_metrics)
-        val_loss_global = val_metrics_global.get('loss').item()
+        global_val_metrics = evaluation_loop(world_size, classifier, dl_test, device)
+        global_val_loss = global_val_metrics.get('loss').item()
 
         if scheduler and scheduler_step_unit == 'epoch':
-            step_scheduler(scheduler, val_loss_global)
+            step_scheduler(scheduler, global_val_loss)
 
         if rank == 0:
-            print(f"epoch: {epoch}... validation loss: {val_loss_global}")
-            for name in val_metrics_global:
+            print(f"epoch: {epoch}... validation loss: {global_val_loss}")
+            for name in global_val_metrics:
                 writer.add_scalar(
                     tag=f"val/{name}",
-                    scalar_value=val_metrics_global.get(name).item(),
+                    scalar_value=global_val_metrics.get(name).item(),
                     global_step=epoch)
 
             if checkpoint_strategy.is_eligible(
-                    unit='epoch', step=epoch, loss=val_loss_global):
+                    unit='epoch', step=epoch, loss=global_val_loss):
                 save_checkpoints(
                     checkpoint_dir=checkpoint_dir,
                     checkpointables={

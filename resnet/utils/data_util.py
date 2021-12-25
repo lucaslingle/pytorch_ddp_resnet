@@ -156,39 +156,35 @@ def get_datasets(
 
 def get_samplers(
         rank: int,
-        num_replicas: int,
+        world_size: int,
         dataset_train: Dataset,
         dataset_test: Dataset,
         **kwargs: Dict[str, Any]
-) -> Dict[str, Optional[Sampler]]:
+) -> Dict[str, Sampler]:
     """
-    Maybe instantiates distributed samplers.
+    Instantiates distributed samplers.
 
     :param rank: Process rank.
-    :param num_shards: Number of shards for the data.
+    :param world_size: Number of processes.
     :param dataset_train: Training dataset,
     :param dataset_test: Validation/test dataset.
     :param kwargs: Keyword args.
     :return: Dictionary of optional train and test samplers.
     """
-    if num_replicas > 1:
-        sampler_train = tc.utils.data.DistributedSampler(
-            dataset=dataset_train,
-            num_replicas=num_replicas,
-            rank=rank,
-            shuffle=True,
-            seed=0,
-            drop_last=False)
-        sampler_test = tc.utils.data.DistributedSampler(
-            dataset=dataset_test,
-            num_replicas=num_replicas,
-            rank=rank,
-            shuffle=True,
-            seed=0,
-            drop_last=False)
-    else:
-        sampler_train = None
-        sampler_test = None
+    sampler_train = tc.utils.data.DistributedSampler(
+        dataset=dataset_train,
+        num_replicas=world_size,
+        rank=rank,
+        shuffle=True,
+        seed=0,
+        drop_last=False)
+    sampler_test = tc.utils.data.DistributedSampler(
+        dataset=dataset_test,
+        num_replicas=world_size,
+        rank=rank,
+        shuffle=True,
+        seed=0,
+        drop_last=False)
 
     return {
         'sampler_train': sampler_train,
@@ -201,7 +197,8 @@ def get_dataloaders(
         dataset_test: Dataset,
         sampler_train: Sampler,
         sampler_test: Sampler,
-        local_batch_size: int,
+        batch_size: int,
+        world_size: int,
         **kwargs: Dict[str, Any]
 ) -> Dict[str, Dataloader]:
     """
@@ -211,10 +208,13 @@ def get_dataloaders(
     :param dataset_test: Validation/test dataset.
     :param sampler_train: This process' distributed sampler for training set.
     :param sampler_test: This process' distributed sampler for training set.
-    :param local_batch_size: Batch size per process.
+    :param batch_size: Global batch size.
+    :param world_size: Number of processes.
     :param kwargs: Keyword args.
     :return: Dictionary of dataloaders for train and test data.
     """
+    local_batch_size = batch_size // world_size
+
     dl_train = tc.utils.data.DataLoader(
         dataset=dataset_train,
         batch_size=local_batch_size,
