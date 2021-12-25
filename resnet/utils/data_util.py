@@ -208,8 +208,8 @@ def get_dataloaders(
     :param dataset_test: Validation/test dataset.
     :param sampler_train: This process' distributed sampler for training set.
     :param sampler_test: This process' distributed sampler for training set.
-    :param batch_size: Global batch size.
     :param world_size: Number of processes.
+    :param batch_size: Global batch size.
     :param kwargs: Keyword args.
     :return: Dictionary of dataloaders for train and test data.
     """

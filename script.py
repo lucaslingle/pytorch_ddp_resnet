@@ -117,7 +117,6 @@ def train(rank, config):
 def evaluate(rank, config):
     learning_system = setup(rank, config)
     metrics = evaluation_loop(**config, **learning_system)
-    metrics = {k: v.item() for k,v in metrics.items()}
     if rank == 0:
         print(f"Test metrics: {metrics}")
     cleanup()

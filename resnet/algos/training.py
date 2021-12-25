@@ -93,7 +93,7 @@ def training_loop(
             optimizer.step()
 
             global_metrics = global_means(metrics, world_size)
-            global_loss = global_metrics.get('loss').item()
+            global_loss = global_metrics.get('loss')
 
             if scheduler and scheduler_step_unit == 'batch':
                 step_scheduler(scheduler, global_loss)
@@ -103,7 +103,7 @@ def training_loop(
                 for name in global_metrics:
                     writer.add_scalar(
                         tag=f"train/{name}",
-                        scalar_value=global_metrics.get(name).item(),
+                        scalar_value=global_metrics.get(name),
                         global_step=global_step)
 
                 if checkpoint_strategy.is_eligible(
@@ -122,7 +122,7 @@ def training_loop(
                 break
 
         global_val_metrics = evaluation_loop(world_size, classifier, dl_test, device)
-        global_val_loss = global_val_metrics.get('loss').item()
+        global_val_loss = global_val_metrics.get('loss')
 
         if scheduler and scheduler_step_unit == 'epoch':
             step_scheduler(scheduler, global_val_loss)
@@ -132,7 +132,7 @@ def training_loop(
             for name in global_val_metrics:
                 writer.add_scalar(
                     tag=f"val/{name}",
-                    scalar_value=global_val_metrics.get(name).item(),
+                    scalar_value=global_val_metrics.get(name),
                     global_step=epoch)
 
             if checkpoint_strategy.is_eligible(
