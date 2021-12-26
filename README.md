@@ -38,7 +38,7 @@ The config file has several components. We detail their usage below.
    - Single-machine training is sufficient to train large ImageNet ResNet models, which typically require at most 8 GPUs. 
 To scale up further, use your favorite cluster coordination tool, and be sure to set the ```master_hostname``` and ```master_port``` parameters to appropriate values.
 - Data Augmentation:
-  - We allow flexible pipeline of preprocessing and data augmentation operations to be specified. The transforms are defined in ```resnet/utils/transform_util.py```.
+  - We allow a flexible pipeline of preprocessing and data augmentation operations to be specified. The transforms are defined in ```resnet/utils/transform_util.py```.
   - The class names for these transforms must be listed in the order they are to be applied.
   - The class names of each transform serves as a key in a dictionary, whose values are dictionaries of class-specific arguments.
 - Architecure:
