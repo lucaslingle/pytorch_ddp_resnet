@@ -46,14 +46,15 @@ To scale up further, use your favorite cluster coordination tool, and be sure to
 - Optimizer and Scheduler:
   - For the optimizer and scheduler, you should use the class names used by pytorch. 
   - For the scheduler, you should also set the ```scheduler_step_unit``` value to be ```epoch``` or ```batch```, depending on how your learning rate schedule is defined.
+  - The ```scheduler_cls_name``` value can also be ```None```.
 - Checkpointing:
   - Checkpointing can be performed by frequency or by performance (new best value).
-  - To pick a checkpointing strategy, please set the ```checkpoint_strategy_cls_name``` to one of the CheckpointStrategy subclasses found in ```resnet/utils/checkpoint_util.py```.
-  - We currently checkpoint at either the batch or epoch frequency, as specified by the ```checkpoint_strategy_args``` subargument ```unit```.
+  - To pick a checkpointing strategy, please set the ```checkpoint_strategy_cls_name``` to one of the ```CheckpointStrategy``` subclasses found in ```resnet/utils/checkpoint_util.py```.
+  - We currently checkpoint at either the batch or epoch frequency, which is specified by the ```checkpoint_strategy_args``` subargument ```unit```.
 
 ## Reproducing the Papers
 
-To reproduce each paper, we use the exact same data augmentation as the paper, and evaluate exactly the same way.
+To reproduce each paper, we use the exact same data augmentation and preprocessing as the corresponding paper, and we evaluate exactly the same way.
 
 | Paper           | Table   | Architecture |     Metric Name | Paper Result | Our Result | 
 | --------------- | ------- | ------------ | --------------- | ------------ | ---------- | 
