@@ -56,7 +56,7 @@ To scale up further, use your favorite cluster coordination tool, and be sure to
 
 To reproduce each paper, we use the exact same data augmentation and preprocessing as the corresponding paper, and we evaluate exactly the same way.
 
-| Paper                         | Table   |     Dataset | Architecture           |          Metric |        Paper |       Ours | 
+| Paper                         | Table   |     Dataset | Architecture           |     Metric Name | Paper Result | Our Result | 
 | ----------------------------- | ------- | ----------- | ---------------------- | --------------- | ------------ | ---------- | 
 |               He et al., 2015 |       6 |    CIFAR-10 |              ResNet-20 | Top-1 Error (%) |         8.75 |       8.19 | 
 |               He et al., 2016 |       4 |    CIFAR-10 |             ResNet-164 | Top-1 Error (%) |         5.46 |            | 
