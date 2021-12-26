@@ -6,6 +6,7 @@ from typing import Dict, Union, Any
 import importlib
 import inspect
 import os
+import contextlib
 from collections import OrderedDict
 
 import torch as tc
@@ -31,7 +32,10 @@ def _get_dataset(dataset_cls_name, **kwargs):
         del kwargs['train']
     if dataset_cls_name == 'ImageNet':
         del kwargs['download']
-    return dataset_cls(**kwargs)
+    with open(os.devnull, 'w') as f:
+        with contextlib.redirect_stdout(f):
+            dataset = dataset_cls(**kwargs)
+    return dataset
 
 
 def _get_initial_data_shape(data_dir, dataset_cls_name):
