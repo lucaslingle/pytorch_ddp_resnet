@@ -56,6 +56,11 @@ To scale up further, use your favorite cluster coordination tool, and be sure to
 
 To reproduce each paper, we use the exact same data augmentation and preprocessing as the corresponding paper, and we evaluate exactly the same way.
 
-| Paper           | Table   | Architecture |     Metric Name | Paper Result | Our Result | 
-| --------------- | ------- | ------------ | --------------- | ------------ | ---------- | 
-| He et al., 2015 | Table 6 |    ResNet-20 | Top-1 Error (%) |         8.75 |       8.19 | 
+| Paper                         | Table   |     Dataset | Architecture           |          Metric |        Paper |       Ours | 
+| ----------------------------- | ------- | ----------- | ---------------------- | --------------- | ------------ | ---------- | 
+|               He et al., 2015 |       6 |    CIFAR-10 |              ResNet-20 | Top-1 Error (%) |         8.75 |       8.19 | 
+|               He et al., 2016 |       4 |    CIFAR-10 |             ResNet-164 | Top-1 Error (%) |         5.46 |            | 
+| Zagoruyko and Komodakis, 2016 |       6 |    CIFAR-10 |              WRN-28-10 | Top-1 Error (%) |         3.89 |            | 
+| Zagoruyko and Komodakis, 2016 |       6 |   CIFAR-100 |              WRN-28-10 | Top-1 Error (%) |        18.85 |            | 
+| Zagoruyko and Komodakis, 2016 |       8 | ILSVRC-2012 |    WRN-50-2-bottleneck | Top-1 Error (%) |        21.90 |            | 
+| Zagoruyko and Komodakis, 2016 |       8 | ILSVRC-2012 |    WRN-50-2-bottleneck | Top-5 Error (%) |         6.03 |            | 
