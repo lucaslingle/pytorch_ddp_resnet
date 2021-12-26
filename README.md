@@ -19,7 +19,7 @@ pip install -e .
 
 ## Overview
 
-This repo comes in three parts: a python package and a script. The script organizes all runs in a ```models_dir```, placing checkpoints and tensorboard logs in a ```run_name``` subdirectory. 
+This repo comes in two parts: a python package and a script. The script organizes all runs in a ```models_dir```, placing checkpoints and tensorboard logs in a ```run_name``` subdirectory. 
 
 Furthermore, it expects to find a ```config.yaml``` file in the ```run_name``` directory, specifying hyperparameters and configuration details for the ```run_name``` training run. 
 
