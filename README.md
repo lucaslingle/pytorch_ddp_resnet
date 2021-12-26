@@ -44,7 +44,7 @@ To scale up further, use your favorite cluster coordination tool, and be sure to
 - Architecure:
   - For the ```architecture_spec``` value, you should pick a string according to the documentation from ```ResNet``` class in ```resnet/architectures/resnet.py```.
 - Optimizer and Scheduler:
-  - For the optimizer and scheduler, you should use class names used by pytorch, with all capitalization intact.
+  - For the optimizer and scheduler, you should use the class names used by pytorch. 
   - For the scheduler, you should also set the ```scheduler_step_unit``` value to be ```epoch``` or ```batch```, depending on how your learning rate schedule is defined.
 - Checkpointing:
   - Checkpointing can be performed by frequency or by performance (new best value).
