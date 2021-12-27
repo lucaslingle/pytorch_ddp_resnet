@@ -72,6 +72,7 @@ def setup(rank, config):
         model=classifier,
         optimizer_cls_name=config.get('optimizer_cls_name'),
         optimizer_args=config.get('optimizer_args'))
+    scaler = tc.cuda.amp.GradScaler() if tc.cuda.is_available() else None
     scheduler = get_scheduler(
         optimizer=optimizer,
         scheduler_cls_name=config.get('scheduler_cls_name'),
@@ -85,6 +86,7 @@ def setup(rank, config):
         checkpointables={
             'classifier': classifier,
             'optimizer': optimizer,
+            'scaler': scaler,
             'scheduler': scheduler
         },
         map_location=device,
@@ -98,6 +100,7 @@ def setup(rank, config):
         "dl_test": dataloaders.get('dl_test'),
         "classifier": classifier,
         "optimizer": optimizer,
+        "scaler": scaler,
         "scheduler": scheduler,
         "checkpoint_strategy": checkpoint_strategy,
         "global_step": global_step

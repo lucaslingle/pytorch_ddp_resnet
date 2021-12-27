@@ -11,7 +11,7 @@ from resnet.algos.metrics import compute_losses_and_metrics, global_means
 from resnet.algos.evaluation import evaluation_loop
 from resnet.utils.checkpoint_util import CheckpointStrategy, save_checkpoints
 from resnet.utils.types_util import (
-    Module, Optimizer, Scheduler, Sampler, Dataloader
+    Sampler, Dataloader, Module, Optimizer, Scaler, Scheduler
 )
 
 
@@ -29,41 +29,42 @@ def step_scheduler(scheduler: Scheduler, loss: Union[tc.Tensor, float]) -> None:
 def training_loop(
         rank: int,
         world_size: int,
-        classifier: Module,
-        optimizer: Optimizer,
-        scheduler: Optional[Scheduler],
-        scheduler_step_unit: str,
+        device: str,
         sampler_train: Sampler,
         sampler_test: Sampler,
         dl_train: Dataloader,
         dl_test: Dataloader,
-        device: str,
-        global_step: int,
-        max_steps: int,
+        classifier: Module,
+        optimizer: Optimizer,
+        scaler: Optional[Scaler],
+        scheduler: Optional[Scheduler],
+        scheduler_step_unit: str,
         checkpoint_strategy: CheckpointStrategy,
         checkpoint_dir: str,
+        global_step: int,
+        max_steps: int,
         log_dir: str,
         **kwargs: Dict[str, Any]
 ) -> None:
     """
     Runs a training loop on a given process.
-    If rank is zero, logs metrics to tensorboard and saves checkpoints periodically.
 
     :param rank: Process rank.
     :param world_size: World size.
-    :param classifier: Classifier.
-    :param optimizer: Optimizer.
-    :param scheduler: Optional learning rate scheduler.
-    :param scheduler_step_unit: One of 'batch', 'epoch', 'none'.
+    :param device: Device name.
     :param sampler_train: Training distributed sampler.
     :param sampler_test: Test/val distributed sampler.
     :param dl_train: Training dataloader.
     :param dl_test: Test/val dataloader.
-    :param device: Device name.
+    :param classifier: Classifier.
+    :param optimizer: Optimizer.
+    :param grad_scaler: Optional grad scaler for mixed-precision training.
+    :param scheduler: Optional learning rate scheduler.
+    :param scheduler_step_unit: One of 'batch', 'epoch', 'none'.
+    :param checkpoint_strategy: CheckpointStrategy instance.
+    :param checkpoint_dir: Checkpoint directory to save checkpoints to.
     :param global_step: Global step to start from.
     :param max_steps: Maximum number of steps.
-    :param checkpoint_dir: Checkpoint directory to save checkpoints to.
-    :param checkpoint_strategy: CheckpointStrategy instance.
     :param log_dir: Logging directory for Tensorboard.
     :param kwargs: Keyword args.
     :return:
@@ -84,13 +85,20 @@ def training_loop(
         classifier.train()
         for x, y in dl_train:
             x, y = x.to(device), y.to(device)
-            logits = classifier(x)
-            metrics = compute_losses_and_metrics(logits=logits, labels=y)
-            loss = metrics.get('loss')
+            with tc.cuda.amp.autocast(enabled=scaler is not None):
+                logits = classifier(x)
+                metrics = compute_losses_and_metrics(logits=logits, labels=y)
+                loss = metrics.get('loss')
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            if scaler:
+                optimizer.zero_grad(set_to_none=True)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
             global_metrics = global_means(metrics, world_size)
             global_loss = global_metrics.get('loss')
