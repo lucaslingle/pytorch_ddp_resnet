@@ -3,6 +3,7 @@ Training loop.
 """
 
 from typing import Optional, Dict, Any, Union
+from contextlib import ExitStack
 
 import torch as tc
 from torch.utils.tensorboard import SummaryWriter
@@ -85,7 +86,7 @@ def training_loop(
         classifier.train()
         for x, y in dl_train:
             x, y = x.to(device), y.to(device)
-            with tc.cuda.amp.autocast(enabled=scaler is not None):
+            with tc.cuda.amp.autocast() if tc.cuda.is_available() else ExitStack():
                 logits = classifier(x)
                 metrics = compute_losses_and_metrics(logits=logits, labels=y)
                 loss = metrics.get('loss')
