@@ -27,30 +27,42 @@ Using a flexible markup language like YAML allows us to specify, among other thi
 
 ## Usage
 
-To train a new model, you should thus:
+### Script overview
+To train a new model, you should:
 - create a ```models_dir``` directory if it does not exist;
 - create a subdirectory of the ```models_dir``` directory, with a descriptive name for the training run;
-- copy over a config file and edit the parameters appropriately.
+- copy over a config file and edit the parameters appropriately;
+- pass the details to the script and run it: 
+  ```
+  python -m script --models_dir=YOUR_MODELS_DIR --run_name=YOUR_RUN_NAME
+  ```
 
+To evaluate a trained model, append ```--mode=eval``` to the command above.
+
+### Config usage
 The config file has several components. We detail their usage below. 
 - Distributed communication:
-   - The script currently only supports single-machine training with zero or more GPUs. If using GPUs, be sure to set the config ```backend``` value to the string ```nccl```, and set the ```world_size``` to the number of GPUs available. 
+   - The script currently only supports single-machine training with zero or more GPUs. If using GPUs, be sure to set the ```backend``` parameter to ```nccl```, and set the ```world_size``` to the number of GPUs available. 
    - Single-machine training is sufficient to train large ImageNet ResNet models, which typically require at most 8 GPUs. 
-To scale up further, use your favorite cluster coordination tool, and be sure to set the ```master_hostname``` and ```master_port``` parameters to appropriate values.
+To scale up further, use your favorite cluster coordination tool; be sure to set the ```master_hostname``` and ```master_port``` parameters to appropriate values.  
 - Data Augmentation:
   - We allow a flexible pipeline of preprocessing and data augmentation operations to be specified. The transforms are defined in ```resnet/utils/transform_util.py```.
   - The class names for these transforms must be listed in the order they are to be applied.
-  - The class names of each transform serves as a key in a dictionary, whose values are dictionaries of class-specific arguments.
+  - The class names of each transform serve as keys in a dictionary, whose values are dictionaries of class-specific arguments.
 - Architecure:
   - For the ```architecture_spec``` value, you should pick a string according to the documentation from ```ResNet``` class in ```resnet/architectures/resnet.py```.
 - Optimizer and Scheduler:
-  - For the optimizer and scheduler, you should use the class names used by pytorch. 
-  - For the scheduler, you should also set the ```scheduler_step_unit``` value to be ```epoch``` or ```batch```, depending on how your learning rate schedule is defined.
+  - To specify an optimizer and scheduler, use the class names used by pytorch. 
+  - For the scheduler, you should also set the ```scheduler_step_unit``` parameter to be ```epoch``` or ```batch```, depending on how your learning rate schedule is defined.
   - The ```scheduler_cls_name``` value can also be ```None```.
 - Checkpointing:
-  - Checkpointing can be performed by frequency or by performance (new best value).
-  - To pick a checkpointing strategy, please set the ```checkpoint_strategy_cls_name``` to one of the ```CheckpointStrategy``` subclasses found in ```resnet/utils/checkpoint_util.py```.
-  - We currently checkpoint at either the batch or epoch frequency, which is specified by the ```checkpoint_strategy_args``` subargument ```unit```.
+  - Checkpointing strategies trigger checkpoint saves based on scripted conditions. 
+  - To specify a checkpointing strategy, set the ```checkpoint_strategy_cls_name``` to one of the ```CheckpointStrategy``` subclasses found in ```resnet/utils/checkpoint_util.py```.
+  - To specify when conditional checkpointing logic should be run, set the ```checkpoint_strategy_args``` subargument ```unit``` to either ```epoch``` or ```batch```.
+  
+For a brief overview of YAML syntax, see [here](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html).  
+In addition, an ```example_config.yaml``` file is provided to help you get started.  
+
 
 ## Reproducing the Papers
 

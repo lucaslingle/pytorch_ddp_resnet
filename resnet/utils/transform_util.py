@@ -222,7 +222,7 @@ class RandomScaleTransform(Transform):
         short_size, long_size = x_shape[short_idx], x_shape[long_idx]
         tgt_shape = [c, None, None]
         tgt_shape[short_idx] = self._target_short_side
-        tgt_shape[long_idx] = int((self._scaled_short_size / short_size) * long_size)
+        tgt_shape[long_idx] = int((self._target_short_side / short_size) * long_size)
         return tc.nn.functional.interpolate(x, size=tgt_shape, mode='bilinear')
 
 
