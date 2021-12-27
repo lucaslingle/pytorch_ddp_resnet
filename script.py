@@ -85,9 +85,9 @@ def setup(rank, config):
         checkpoint_dir=config.get('checkpoint_dir'),
         checkpointables={
             'classifier': classifier,
-            'scaler': scaler,
             'optimizer': optimizer,
-            'scheduler': scheduler
+            'scheduler': scheduler,
+            'scaler': scaler
         },
         map_location=device,
         steps=None)
