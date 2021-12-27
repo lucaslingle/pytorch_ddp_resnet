@@ -99,8 +99,8 @@ def setup(rank, config):
         "dl_train": dataloaders.get('dl_train'),
         "dl_test": dataloaders.get('dl_test'),
         "classifier": classifier,
-        "optimizer": optimizer,
         "scaler": scaler,
+        "optimizer": optimizer,
         "scheduler": scheduler,
         "checkpoint_strategy": checkpoint_strategy,
         "global_step": global_step
