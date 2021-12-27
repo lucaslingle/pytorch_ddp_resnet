@@ -84,8 +84,8 @@ def setup(rank, config):
     global_step = maybe_load_checkpoints(
         checkpoint_dir=config.get('checkpoint_dir'),
         checkpointables={
-            'classifier': classifier,
             'scaler': scaler,
+            'classifier': classifier,
             'optimizer': optimizer,
             'scheduler': scheduler
         },

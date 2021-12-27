@@ -119,8 +119,8 @@ def training_loop(
                     save_checkpoints(
                         checkpoint_dir=checkpoint_dir,
                         checkpointables={
-                            'classifier': classifier,
                             'scaler': scaler,
+                            'classifier': classifier,
                             'optimizer': optimizer,
                             'scheduler': scheduler
                         },
@@ -149,8 +149,8 @@ def training_loop(
                 save_checkpoints(
                     checkpoint_dir=checkpoint_dir,
                     checkpointables={
-                        'classifier': classifier,
                         'scaler': scaler,
+                        'classifier': classifier,
                         'optimizer': optimizer,
                         'scheduler': scheduler
                     },
