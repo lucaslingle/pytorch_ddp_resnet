@@ -60,7 +60,6 @@ def setup(rank, config):
     dataloaders = get_dataloaders(**config, **datasets, **samplers)
 
     device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
-    scaler = tc.cuda.amp.GradScaler() if tc.cuda.is_available() else None
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet(
             architecture_spec=config.get('architecture_spec'),
@@ -69,6 +68,7 @@ def setup(rank, config):
             dropout_prob=config.get('dropout_prob')
         ).to(device)
     )
+    scaler = tc.cuda.amp.GradScaler() if tc.cuda.is_available() else None
     optimizer = get_optimizer(
         model=classifier,
         optimizer_cls_name=config.get('optimizer_cls_name'),
@@ -85,8 +85,8 @@ def setup(rank, config):
         checkpoint_dir=config.get('checkpoint_dir'),
         checkpointables={
             'classifier': classifier,
-            'optimizer': optimizer,
             'scaler': scaler,
+            'optimizer': optimizer,
             'scheduler': scheduler
         },
         map_location=device,
