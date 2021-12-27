@@ -93,17 +93,17 @@ def setup(rank, config):
         steps=None)
 
     return {
-        "device": device,
-        "sampler_train": samplers.get('sampler_train'),
-        "sampler_test": samplers.get('sampler_test'),
-        "dl_train": dataloaders.get('dl_train'),
-        "dl_test": dataloaders.get('dl_test'),
-        "classifier": classifier,
-        "optimizer": optimizer,
-        "scheduler": scheduler,
-        "scaler": scaler,
-        "checkpoint_strategy": checkpoint_strategy,
-        "global_step": global_step
+        'device': device,
+        'sampler_train': samplers.get('sampler_train'),
+        'sampler_test': samplers.get('sampler_test'),
+        'dl_train': dataloaders.get('dl_train'),
+        'dl_test': dataloaders.get('dl_test'),
+        'classifier': classifier,
+        'optimizer': optimizer,
+        'scheduler': scheduler,
+        'scaler': scaler,
+        'checkpoint_strategy': checkpoint_strategy,
+        'global_step': global_step
     }
 
 
