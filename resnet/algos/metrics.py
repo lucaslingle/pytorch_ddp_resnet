@@ -31,7 +31,7 @@ def global_mean(metric, world_size):
     # for logging purposes only!
     global_metric = metric.detach()
     tc.distributed.all_reduce(global_metric, op=tc.distributed.ReduceOp.SUM)
-    return global_metric.item() / world_size
+    return global_metric.float().item() / world_size
 
 
 def global_means(metrics, world_size):
