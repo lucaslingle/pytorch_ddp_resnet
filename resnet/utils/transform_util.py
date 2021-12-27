@@ -13,7 +13,7 @@ import torchvision as tv
 from resnet.utils.types_util import Dataset
 
 
-class Transform(tc.nn.Module, abc.ABC):
+class Transform(tc.nn.Module, metaclass=abc.ABCMeta):
     def __init__(self, data_shape):
         super().__init__()
         self._data_shape = data_shape
@@ -27,7 +27,7 @@ class Transform(tc.nn.Module, abc.ABC):
         return list(self._data_shape)
 
 
-class FittableTransform(Transform, abc.ABC):
+class FittableTransform(Transform, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def fit(self, dataset: Dataset) -> None:
         raise NotImplementedError
