@@ -120,9 +120,9 @@ def training_loop(
                         checkpoint_dir=checkpoint_dir,
                         checkpointables={
                             'classifier': classifier,
-                            'scaler': scaler,
                             'optimizer': optimizer,
-                            'scheduler': scheduler
+                            'scheduler': scheduler,
+                            'scaler': scaler
                         },
                         steps=global_step+1)
 
@@ -150,8 +150,8 @@ def training_loop(
                     checkpoint_dir=checkpoint_dir,
                     checkpointables={
                         'classifier': classifier,
-                        'scaler': scaler,
                         'optimizer': optimizer,
-                        'scheduler': scheduler
+                        'scheduler': scheduler,
+                        'scaler': scaler
                     },
                     steps=global_step+1)
