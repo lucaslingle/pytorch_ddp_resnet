@@ -59,7 +59,7 @@ def setup(rank, config):
     samplers = get_samplers(rank, **config, **datasets)
     dataloaders = get_dataloaders(**config, **datasets, **samplers)
 
-    device = rank if tc.cuda.is_available() else "cpu"
+    device = f"cuda:{rank}" if tc.cuda.is_available() else "cpu"
     scaler = tc.cuda.amp.GradScaler() if tc.cuda.is_available() else None
     classifier = tc.nn.parallel.DistributedDataParallel(
         ResNet(
