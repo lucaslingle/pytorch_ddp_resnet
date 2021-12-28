@@ -7,6 +7,7 @@ from typing import Union
 import torch as tc
 
 
+Device = Union[str, int]
 Module = tc.nn.Module
 Optimizer = tc.optim.Optimizer
 Scaler = tc.cuda.amp.GradScaler

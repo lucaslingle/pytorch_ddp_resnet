@@ -8,15 +8,15 @@ from collections import Counter
 import torch as tc
 
 from resnet.algos.metrics import compute_losses_and_metrics, global_means
-from resnet.utils.types_util import Module, Dataloader
+from resnet.utils.types_util import Device, Dataloader, Module
 
 
 @tc.no_grad()
 def evaluation_loop(
+        device: Device,
         world_size: int,
-        classifier: Module,
         dl_test: Dataloader,
-        device: str,
+        classifier: Module,
         **kwargs: Dict[str, Any]
 ) -> Dict[str, float]:
     """

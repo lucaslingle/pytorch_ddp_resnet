@@ -12,7 +12,7 @@ from resnet.algos.metrics import compute_losses_and_metrics, global_means
 from resnet.algos.evaluation import evaluation_loop
 from resnet.utils.checkpoint_util import CheckpointStrategy, save_checkpoints
 from resnet.utils.types_util import (
-    Sampler, Dataloader, Module, Optimizer, Scaler, Scheduler
+    Device, Sampler, Dataloader, Module, Optimizer, Scaler, Scheduler
 )
 
 
@@ -30,7 +30,7 @@ def step_scheduler(scheduler: Scheduler, loss: Union[tc.Tensor, float]) -> None:
 def training_loop(
         rank: int,
         world_size: int,
-        device: str,
+        device: Device,
         sampler_train: Sampler,
         sampler_test: Sampler,
         dl_train: Dataloader,
