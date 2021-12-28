@@ -51,8 +51,8 @@ def _get_transforms(
         data_aug: Dict[str, Dict[str, Union[str, int, float]]],
         checkpoint_dir: str,
         is_train: bool,
-        reusable_transforms: OrderedDict[str, Transform],
-) -> OrderedDict[str, Transform]:
+        reusable_transforms: OrderedDict,
+) -> OrderedDict:
     """
     Creates an ordered dictionary of Transforms.
 
