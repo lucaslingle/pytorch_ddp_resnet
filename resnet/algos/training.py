@@ -131,7 +131,7 @@ def training_loop(
             if done():
                 break
 
-        global_val_metrics = evaluation_loop(world_size, classifier, dl_test, device)
+        global_val_metrics = evaluation_loop(world_size, device, dl_test, classifier)
         global_val_loss = global_val_metrics.get('loss')
 
         if scheduler and scheduler_step_unit == 'epoch':
