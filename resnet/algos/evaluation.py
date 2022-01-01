@@ -35,10 +35,7 @@ def evaluation_loop(
     for x, y in dl_test:
         x, y = x.to(device), y.to(device)
         logits = classifier(x)
-        metrics = compute_losses_and_metrics(logits=logits, labels=y)
-
-        for name in metrics:
-            summed_metrics[name] += metrics.get(name)
+        summed_metrics += compute_losses_and_metrics(logits=logits, labels=y)
         num_batch += 1
 
     metrics = {k: v / num_batch for k,v in summed_metrics.items()}
