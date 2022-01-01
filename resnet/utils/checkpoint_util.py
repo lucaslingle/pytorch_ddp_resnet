@@ -165,7 +165,10 @@ class CheckpointStrategy(tc.nn.Module, metaclass=abc.ABCMeta):
             self.register_buffer('_epoch_step', tc.tensor(self.epoch_step+1))
 
     @abc.abstractmethod
-    def is_eligible(self, **kwargs) -> bool:
+    def observe(self, **kwargs) -> bool:
+        """
+        Observe the inputs, update state, and return checkpoint eligibility.
+        """
         pass
 
 
@@ -174,7 +177,7 @@ class FrequencyCheckpointStrategy(CheckpointStrategy):
         super().__init__(unit)
         self._frequency = frequency
 
-    def is_eligible(self, unit, **kwargs) -> bool:
+    def observe(self, unit, **kwargs) -> bool:
         cond = getattr(self, f"{unit}_step") % self._frequency == 0
         self.step(unit)
         if self.unit == unit:
@@ -191,7 +194,7 @@ class PerformanceCheckpointStrategy(CheckpointStrategy):
     def lowest_loss(self):
         return self._lowest_loss.item()
 
-    def is_eligible(self, unit, loss, **kwargs) -> bool:
+    def observe(self, unit, loss, **kwargs) -> bool:
         cond = loss < self.lowest_loss
         self.step(unit)
         if self.unit == unit:

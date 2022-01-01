@@ -124,8 +124,7 @@ def training_loop(
                             scalar_value=global_metrics.get(name),
                             global_step=global_step)
 
-                    if checkpoint_strategy.is_eligible(
-                            unit='batch', loss=global_loss):
+                    if checkpoint_strategy.observe(unit='batch', loss=global_loss):
                         save_checkpoints(
                             checkpoint_dir=checkpoint_dir,
                             checkpointables={
@@ -156,8 +155,7 @@ def training_loop(
                     scalar_value=global_val_metrics.get(name),
                     global_step=epoch)
 
-            if checkpoint_strategy.is_eligible(
-                    unit='epoch', loss=global_val_loss):
+            if checkpoint_strategy.observe(unit='epoch', loss=global_val_loss):
                 save_checkpoints(
                     checkpoint_dir=checkpoint_dir,
                     checkpointables={
