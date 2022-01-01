@@ -31,9 +31,9 @@ def compute_losses_and_metrics(logits, labels):
 
 def global_mean(metric, world_size):
     # for logging purposes only!
-    global_metric = metric.clone().detach()
+    global_metric = metric.clone().float().detach()
     tc.distributed.all_reduce(global_metric, op=tc.distributed.ReduceOp.SUM)
-    return global_metric.float().item() / world_size
+    return global_metric.item() / world_size
 
 
 def global_means(metrics, world_size):
