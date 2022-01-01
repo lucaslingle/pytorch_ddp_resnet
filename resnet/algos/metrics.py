@@ -2,6 +2,8 @@
 Metrics and losses.
 """
 
+from collections import Counter
+
 import torch as tc
 
 
@@ -36,4 +38,4 @@ def global_mean(metric, world_size):
 
 def global_means(metrics, world_size):
     # for logging purposes only!
-    return {k: global_mean(v, world_size) for k, v in metrics.items()}
+    return Counter({k: global_mean(v, world_size) for k, v in metrics.items()})

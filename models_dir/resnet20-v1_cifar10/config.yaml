@@ -18,6 +18,7 @@ use_proj: False
 dropout_prob: 0.0
 max_steps: 64000
 batch_size: 128
+num_microbatches: 1
 optimizer_cls_name: SGD
 optimizer_args:
     lr: 0.1

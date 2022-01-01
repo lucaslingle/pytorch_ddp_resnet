@@ -4,6 +4,7 @@ Training loop.
 
 from typing import Optional, Dict, Any, Union
 from contextlib import ExitStack
+from collections import Counter
 
 import torch as tc
 from torch.utils.tensorboard import SummaryWriter
@@ -42,6 +43,7 @@ def training_loop(
         scheduler_step_unit: str,
         checkpoint_strategy: CheckpointStrategy,
         checkpoint_dir: str,
+        num_microbatches: int,
         global_step: int,
         max_steps: int,
         log_dir: str,
@@ -64,6 +66,7 @@ def training_loop(
     :param scheduler_step_unit: One of 'batch', 'epoch', 'none'.
     :param checkpoint_strategy: CheckpointStrategy instance.
     :param checkpoint_dir: Checkpoint directory to save checkpoints to.
+    :param num_microbatches: Number of microbatches.
     :param global_step: Global step to start from.
     :param max_steps: Maximum number of steps.
     :param log_dir: Logging directory for Tensorboard.
@@ -77,6 +80,11 @@ def training_loop(
     def done():
         return global_step >= max_steps
 
+    def microbatch_done(microbatch_id):
+        cond1 = (num_microbatches == 1)
+        cond2 = (microbatch_id > 0 and microbatch_id % num_microbatches == 0)
+        return cond1 or cond2
+
     while not done():
         # todo(lucaslingle): use something more reliable to estimate epoch,
         #  see warning at link https://pytorch.org/docs/stable/data.html
@@ -84,52 +92,58 @@ def training_loop(
         sampler_train.set_epoch(epoch)
 
         classifier.train()
-        for x, y in dl_train:
+        global_metrics = Counter()
+        for microbatch_id, (x, y) in enumerate(dl_train):
             x, y = x.to(device), y.to(device)
             with tc.cuda.amp.autocast() if tc.cuda.is_available() else ExitStack():
                 logits = classifier(x)
                 metrics = compute_losses_and_metrics(logits=logits, labels=y)
                 loss = metrics.get('loss')
-
             if scaler:
-                optimizer.zero_grad(set_to_none=True)
                 scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
             else:
-                optimizer.zero_grad()
                 loss.backward()
-                optimizer.step()
+            global_metrics += global_means(metrics, world_size)
 
-            global_metrics = global_means(metrics, world_size)
-            global_loss = global_metrics.get('loss')
+            if microbatch_done(microbatch_id):
+                if scaler:
+                    scaler.step(optimizer)
+                    scaler.update()
+                    optimizer.zero_grad(set_to_none=True)
+                else:
+                    optimizer.step()
+                    optimizer.zero_grad()
 
-            if scheduler and scheduler_step_unit == 'batch':
-                step_scheduler(scheduler, global_loss)
+                global_metrics = {k: v / num_microbatches for k,v in global_metrics.items()}
+                global_loss = global_metrics.get('loss')
 
-            if rank == 0:
-                print(f"global step: {global_step}... loss: {global_loss}")
-                for name in global_metrics:
-                    writer.add_scalar(
-                        tag=f"train/{name}",
-                        scalar_value=global_metrics.get(name),
-                        global_step=global_step)
+                if scheduler and scheduler_step_unit == 'batch':
+                    step_scheduler(scheduler, global_loss)
 
-                if checkpoint_strategy.is_eligible(
-                        unit='batch', step=global_step, loss=global_loss):
-                    save_checkpoints(
-                        checkpoint_dir=checkpoint_dir,
-                        checkpointables={
-                            'classifier': classifier,
-                            'optimizer': optimizer,
-                            'scheduler': scheduler,
-                            'scaler': scaler
-                        },
-                        steps=global_step+1)
+                if rank == 0:
+                    print(f"global step: {global_step}... loss: {global_loss}")
+                    for name in global_metrics:
+                        writer.add_scalar(
+                            tag=f"train/{name}",
+                            scalar_value=global_metrics.get(name),
+                            global_step=global_step)
 
-            global_step += 1
-            if done():
-                break
+                    if checkpoint_strategy.is_eligible(
+                            unit='batch', step=global_step, loss=global_loss):
+                        save_checkpoints(
+                            checkpoint_dir=checkpoint_dir,
+                            checkpointables={
+                                'classifier': classifier,
+                                'optimizer': optimizer,
+                                'scheduler': scheduler,
+                                'scaler': scaler
+                            },
+                            steps=global_step+1)
+
+                global_metrics = Counter()
+                global_step += 1
+                if done():
+                    break
 
         global_val_metrics = evaluation_loop(world_size, device, dl_test, classifier)
         global_val_loss = global_val_metrics.get('loss')

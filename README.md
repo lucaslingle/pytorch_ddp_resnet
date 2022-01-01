@@ -10,7 +10,7 @@ It supports the architectures and training algorithms from several papers, inclu
 We recommend creating a conda environment for this project. You can download the miniconda package manager from https://docs.conda.io/en/latest/miniconda.html.
 Then you can create a new conda environment as follows:
 ```bash
-conda create --name pytorch_ddp_resnet python=3.8.1
+conda create --name pytorch_ddp_resnet python=3.9.2
 conda activate pytorch_ddp_resnet
 git clone https://github.com/lucaslingle/pytorch_ddp_resnet
 cd pytorch_ddp_resnet
@@ -60,8 +60,7 @@ To scale up further, use your favorite cluster coordination tool; be sure to set
   - To specify a checkpointing strategy, set the ```checkpoint_strategy_cls_name``` to one of the ```CheckpointStrategy``` subclasses found in ```resnet/utils/checkpoint_util.py```.
   - To specify when conditional checkpointing logic should be run, set the ```checkpoint_strategy_args``` subargument ```unit``` to either ```epoch``` or ```batch```.
   
-For a brief overview of YAML syntax, see [here](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html).  
-In addition, an ```example_config.yaml``` file is provided to help you get started.  
+In addition, some example ```config.yaml``` files are provided to help you get started.  
 
 
 ## Reproducing the Papers

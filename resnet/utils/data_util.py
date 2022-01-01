@@ -197,6 +197,7 @@ def get_dataloaders(
         sampler_test: Sampler,
         batch_size: int,
         world_size: int,
+        num_microbatches: int,
         **kwargs: Dict[str, Any]
 ) -> Dict[str, Dataloader]:
     """
@@ -208,10 +209,11 @@ def get_dataloaders(
     :param sampler_test: This process' distributed sampler for training set.
     :param world_size: Number of processes.
     :param batch_size: Global batch size.
+    :param num_microbatches: Number of microbatches.
     :param kwargs: Keyword args.
     :return: Dictionary of dataloaders for train and test data.
     """
-    local_batch_size = batch_size // world_size
+    local_batch_size = batch_size // (num_microbatches * world_size)
 
     dl_train = tc.utils.data.DataLoader(
         dataset=dataset_train,
