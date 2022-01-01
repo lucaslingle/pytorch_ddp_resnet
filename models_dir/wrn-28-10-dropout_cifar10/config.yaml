@@ -1,7 +1,7 @@
 backend: nccl
 world_size: 1
 master_addr: localhost
-master_port: '12347'
+master_port: '12345'
 dataset_cls_name: CIFAR10
 data_aug_train:
     ToTensorTransform: {}
