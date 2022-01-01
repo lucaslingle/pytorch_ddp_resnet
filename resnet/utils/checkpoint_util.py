@@ -137,34 +137,67 @@ def save_checkpoints(
                 steps=steps)
 
 
-class CheckpointStrategy(abc.ABC):
-    def __init__(self):
-        pass
+class CheckpointStrategy(tc.nn.Module, metaclass=abc.ABCMeta):
+    def __init__(self, unit):
+        assert unit in ['batch', 'epoch']
+        super().__init__()
+        self._unit = unit
+        self.register_buffer('_batch_step', tc.tensor(0))
+        self.register_buffer('_epoch_step', tc.tensor(0))
 
+    @property
+    def unit(self):
+        return self._unit
+
+    @property
+    def batch_step(self):
+        return self._batch_step.item()
+
+    @property
+    def epoch_step(self):
+        return self._epoch_step.item()
+
+    def step(self, unit):
+        assert unit in ['batch', 'epoch']
+        if unit == 'batch':
+            self.register_buffer('_batch_step', tc.tensor(self.batch_step+1))
+        if unit == 'epoch':
+            self.register_buffer('_epoch_step', tc.tensor(self.epoch_step+1))
+
+    @abc.abstractmethod
     def is_eligible(self, **kwargs) -> bool:
         pass
 
 
 class FrequencyCheckpointStrategy(CheckpointStrategy):
     def __init__(self, unit, frequency, **kwargs):
-        super().__init__()
-        self._unit = unit
+        super().__init__(unit)
         self._frequency = frequency
 
-    def is_eligible(self, unit, step, **kwargs) -> bool:
-        return self._unit == unit and step % self._frequency == 0
+    def is_eligible(self, unit, **kwargs) -> bool:
+        cond = getattr(self, f"{unit}_step") % self._frequency == 0
+        self.step(unit)
+        if self.unit == unit:
+            return cond
+        return False
 
 
 class PerformanceCheckpointStrategy(CheckpointStrategy):
     def __init__(self, unit, **kwargs):
-        super().__init__()
-        self._unit = unit
-        self._lowest_loss = float('-inf')
+        super().__init__(unit)
+        self.register_buffer('_lowest_loss', tc.tensor(float('-inf')))
+
+    @property
+    def lowest_loss(self):
+        return self._lowest_loss.item()
 
     def is_eligible(self, unit, loss, **kwargs) -> bool:
-        if self._unit == unit and loss < self._lowest_loss:
-            self._lowest_loss = loss
-            return True
+        cond = loss < self.lowest_loss
+        self.step(unit)
+        if self.unit == unit:
+            if cond:
+                self.register_buffer('_lowest_loss', tc.tensor(loss))
+            return cond
         return False
 
 

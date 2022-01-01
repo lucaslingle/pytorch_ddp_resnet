@@ -84,9 +84,7 @@ def training_loop(
         return microbatch_id % num_microbatches == 0
 
     while not done():
-        # todo(lucaslingle): use something more reliable to estimate epoch,
-        #  see warning at link https://pytorch.org/docs/stable/data.html
-        epoch = (global_step // len(dl_train))
+        epoch = checkpoint_strategy.epoch_step
         sampler_train.set_epoch(epoch)
 
         classifier.train()
@@ -127,10 +125,11 @@ def training_loop(
                             global_step=global_step)
 
                     if checkpoint_strategy.is_eligible(
-                            unit='batch', step=global_step, loss=global_loss):
+                            unit='batch', loss=global_loss):
                         save_checkpoints(
                             checkpoint_dir=checkpoint_dir,
                             checkpointables={
+                                'checkpoint_strategy': checkpoint_strategy,
                                 'classifier': classifier,
                                 'optimizer': optimizer,
                                 'scheduler': scheduler,
@@ -158,10 +157,11 @@ def training_loop(
                     global_step=epoch)
 
             if checkpoint_strategy.is_eligible(
-                    unit='epoch', step=epoch, loss=global_val_loss):
+                    unit='epoch', loss=global_val_loss):
                 save_checkpoints(
                     checkpoint_dir=checkpoint_dir,
                     checkpointables={
+                        'checkpoint_strategy': checkpoint_strategy,
                         'classifier': classifier,
                         'optimizer': optimizer,
                         'scheduler': scheduler,
