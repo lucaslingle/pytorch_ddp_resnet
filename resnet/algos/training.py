@@ -90,7 +90,7 @@ def training_loop(
         classifier.train()
         global_metrics = Counter()
         for microbatch_id, (x, y) in enumerate(dl_train, 1):
-            # accumulate gradients and metrics from each microbatch
+            # accumulate ddp gradients and global metrics from each microbatch
             x, y = x.to(device), y.to(device)
             with tc.cuda.amp.autocast() if scaler else ExitStack():
                 logits = classifier(x)
@@ -102,7 +102,7 @@ def training_loop(
                 loss.backward()
             global_metrics += global_means(metrics, world_size)
 
-            # step distributed optimizer, log metrics, save checkpoint maybe
+            # step optimizer, log metrics, maybe step scheduler, save checkpoint
             if batch_done(microbatch_id):
                 if scaler:
                     scaler.step(optimizer)
@@ -143,7 +143,7 @@ def training_loop(
                 if done():
                     break
 
-        # evaluate on validation set, log metrics, save checkpoint maybe
+        # eval on val set, log metrics, maybe step scheduler, save checkpoint
         global_val_metrics = evaluation_loop(world_size, device, dl_test, classifier)
         global_val_loss = global_val_metrics.get('loss')
 
