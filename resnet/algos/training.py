@@ -81,7 +81,7 @@ def training_loop(
         return global_step >= max_steps
 
     def batch_done(microbatch_id):
-        return microbatch_id % num_microbatches == num_microbatches-1
+        return microbatch_id % num_microbatches == 0
 
     while not done():
         # todo(lucaslingle): use something more reliable to estimate epoch,
@@ -91,7 +91,7 @@ def training_loop(
 
         classifier.train()
         global_metrics = Counter()
-        for microbatch_id, (x, y) in enumerate(dl_train):
+        for microbatch_id, (x, y) in enumerate(dl_train, 1):
             x, y = x.to(device), y.to(device)
             with tc.cuda.amp.autocast() if tc.cuda.is_available() else ExitStack():
                 logits = classifier(x)
