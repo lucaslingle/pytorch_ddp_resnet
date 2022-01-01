@@ -91,7 +91,7 @@ def training_loop(
         global_metrics = Counter()
         for microbatch_id, (x, y) in enumerate(dl_train, 1):
             x, y = x.to(device), y.to(device)
-            with tc.cuda.amp.autocast() if tc.cuda.is_available() else ExitStack():
+            with tc.cuda.amp.autocast() if scaler else ExitStack():
                 logits = classifier(x)
                 metrics = compute_losses_and_metrics(logits=logits, labels=y)
                 loss = metrics.get('loss')
