@@ -95,7 +95,10 @@ def training_loop(
                 logits = classifier(x)
                 metrics = compute_losses_and_metrics(logits=logits, labels=y)
                 loss = metrics.get('loss')
-            scaler.scale(loss).backward() if scaler else loss.backward()
+            if scaler:
+                scaler.scale(loss).backward()
+            else:
+                loss.backward()
             global_metrics += global_means(metrics, world_size)
 
             if batch_done(microbatch_id):
