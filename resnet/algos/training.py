@@ -80,10 +80,8 @@ def training_loop(
     def done():
         return global_step >= max_steps
 
-    def microbatch_done(microbatch_id):
-        cond1 = (num_microbatches == 1)
-        cond2 = (microbatch_id > 0 and microbatch_id % num_microbatches == 0)
-        return cond1 or cond2
+    def batch_done(microbatch_id):
+        return microbatch_id % num_microbatches == num_microbatches-1
 
     while not done():
         # todo(lucaslingle): use something more reliable to estimate epoch,
@@ -105,7 +103,7 @@ def training_loop(
                 loss.backward()
             global_metrics += global_means(metrics, world_size)
 
-            if microbatch_done(microbatch_id):
+            if batch_done(microbatch_id):
                 if scaler:
                     scaler.step(optimizer)
                     scaler.update()
