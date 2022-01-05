@@ -3,8 +3,8 @@ from setuptools import setup
 
 setup(
     name="pytorch_ddp_resnet",
-    py_modules=["pytorch_ddp_resnet"],
-    version="0.0.1",
+    py_modules=["resnet"],
+    version="1.0.0",
     description="A Pytorch implementation of Deep Residual Networks.",
     author="Lucas D. Lingle",
     install_requires=[
