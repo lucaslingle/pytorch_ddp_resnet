@@ -1,0 +1,37 @@
+backend: nccl
+world_size: 2
+master_addr: localhost
+master_port: '12345'
+dataset_cls_name: CIFAR10
+data_aug_train:
+    ToTensorTransform: {}
+    StandardizeWhiteningTransform: {}
+    FlipTransform: {p: 0.5}
+    PaddingTransform: {pad_size: 4, pad_type: mirror}
+    RandomCropTransform: {crop_size: 32}
+data_aug_test:
+    ToTensorTransform: {}
+    StandardizeWhiteningTransform: {}
+architecture_spec: 'c3,160,3,1,1 r4 r4 r4 n a ap8,1,0 fc640,10'
+preact: True
+use_proj: True
+dropout_prob: 0.3
+max_steps: 78125
+batch_size: 128
+num_microbatches: 1
+optimizer_cls_name: SGD
+optimizer_args:
+    lr: 0.1
+    momentum: 0.9
+    dampening: 0.0
+    nesterov: True
+    weight_decay: 0.0005
+scheduler_cls_name: MultiStepLR
+scheduler_step_unit: epoch
+scheduler_args:
+    milestones: [60, 120, 160]
+    gamma: 0.2
+checkpoint_strategy_cls_name: FrequencyCheckpointStrategy
+checkpoint_strategy_args:
+    unit: batch
+    frequency: 100
