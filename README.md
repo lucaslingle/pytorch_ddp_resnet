@@ -71,7 +71,7 @@ To reproduce each paper, we use the exact same data augmentation and preprocessi
 | ----------------------------- | ------- | ----------- | ---------------------- | --------------- | ------------ | ---------- | 
 |               He et al., 2015 |       6 |    CIFAR-10 |           ResNet-v1-20 | Top-1 Error (%) |         8.75 |       8.19 | 
 |               He et al., 2016 |       4 |    CIFAR-10 |          ResNet-v2-164 | Top-1 Error (%) |         5.46 |            | 
-| Zagoruyko and Komodakis, 2016 |       6 |    CIFAR-10 |              WRN-28-10 | Top-1 Error (%) |         3.89 |            | 
+| Zagoruyko and Komodakis, 2016 |       6 |    CIFAR-10 |              WRN-28-10 | Top-1 Error (%) |         3.89 |       3.94 | 
 | Zagoruyko and Komodakis, 2016 |       6 |   CIFAR-100 |              WRN-28-10 | Top-1 Error (%) |        18.85 |            | 
 | Zagoruyko and Komodakis, 2016 |       8 | ILSVRC-2012 |    WRN-50-2-bottleneck | Top-1 Error (%) |        21.90 |            | 
 | Zagoruyko and Komodakis, 2016 |       8 | ILSVRC-2012 |    WRN-50-2-bottleneck | Top-5 Error (%) |         6.03 |            | 
