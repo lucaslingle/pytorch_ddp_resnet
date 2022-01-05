@@ -1,5 +1,5 @@
 backend: nccl
-world_size: 1
+world_size: 2
 master_addr: localhost
 master_port: '12345'
 dataset_cls_name: CIFAR10
@@ -18,7 +18,7 @@ use_proj: True
 dropout_prob: 0.3
 max_steps: 78125
 batch_size: 128
-num_microbatches: 2
+num_microbatches: 1
 optimizer_cls_name: SGD
 optimizer_args:
     lr: 0.1
