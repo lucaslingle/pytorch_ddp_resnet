@@ -188,7 +188,7 @@ class FrequencyCheckpointStrategy(CheckpointStrategy):
 class PerformanceCheckpointStrategy(CheckpointStrategy):
     def __init__(self, unit, **kwargs):
         super().__init__(unit)
-        self.register_buffer('_lowest_loss', tc.tensor(float('-inf')))
+        self.register_buffer('_lowest_loss', tc.tensor(float('inf')))
 
     @property
     def lowest_loss(self):
